@@ -3,7 +3,7 @@
  */
 export const SHOP = {
   name: 'Umer Enterprises',
-  owner: 'Umer-ud-Din Ahangar',
+  owner: 'Umer-ud-Din Ahanger',
   gstin: '01CTBPA2880C1ZJ',
   phone: '9906634041',
   /** The line under the shop name on the printed bill book. */
