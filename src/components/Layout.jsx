@@ -11,6 +11,7 @@ import {
 import { useState } from 'react'
 import Toast from './Toast'
 import ShopFooter from './ShopFooter'
+import InstallButton from './InstallButton'
 import { SHOP } from '../config/shop'
 import { useAuth } from '../context/useAuth'
 import Modal from './Modal'
@@ -89,6 +90,7 @@ export default function Layout() {
         </nav>
 
         <div className="border-t border-slate-200 px-3 py-3 space-y-2">
+          <InstallButton className="w-full" />
           <button
             onClick={() => setShowChangePassword(true)}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"

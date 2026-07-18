@@ -3,6 +3,7 @@ import { LogIn } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { SHOP, LOGIN } from '../config/shop'
 import Field, { inputClass } from '../components/Field'
+import InstallButton from '../components/InstallButton'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -75,6 +76,10 @@ export default function Login() {
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <div className="mt-5 flex justify-center">
+          <InstallButton />
+        </div>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
           {SHOP.name} · {SHOP.owner}
