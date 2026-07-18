@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# React Router handles the routes in the browser, so every path must be served
+# index.html. Without this, opening /sell directly or refreshing on it returns
+# a Netlify 404 instead of the app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Vite fingerprints filenames in dist/assets, so those are safe to cache forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
