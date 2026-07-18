@@ -110,6 +110,37 @@ what. There is no way yet to mark a debt as repaid, so the credit total is *what
 credit in that period* — it does not go down when Ramesh pays you back. A proper customer ledger
 with repayments is the natural next feature if you want it.
 
+## Installing it as a phone app
+
+The site is a PWA, so it installs to a phone's home screen with its own icon and opens full
+screen, without a browser address bar. No Play Store, no APK.
+
+**Android (Chrome):** open the site → menu (⋮) → **Install app** / **Add to Home screen**.
+**iPhone (Safari):** open the site → Share → **Add to Home Screen**.
+
+Updates arrive by themselves. A new deploy replaces the cached app the next time it is opened —
+nobody has to reinstall anything.
+
+Icons are generated from `public/logo-mark.png`:
+
+```bash
+node scripts/prepare-icons.cjs .
+```
+
+The mark is black on transparency, which would vanish on a dark wallpaper, so the script
+composites it onto white. The maskable icon keeps the artwork inside the 80% safe zone because
+Android crops it to the launcher's shape.
+
+### Working offline
+
+Firestore keeps what it has already read in IndexedDB, so **stock and prices can still be looked
+up with no connection** — which is the whole point when someone is minding the counter.
+
+**Recording a sale still needs the network.** Sales run as a Firestore transaction to stop two
+people overselling the same item, and transactions cannot be resolved offline. Restocking is the
+same. So the app is fully usable offline for *looking things up*, but billing has to wait for a
+signal.
+
 ## Where the data lives
 
 Everything is in **Cloud Firestore**, so the shop computer and every phone see the same stock.

@@ -1,5 +1,9 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 
 /**
@@ -20,5 +24,18 @@ export const isConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.proj
 
 const app = isConfigured ? initializeApp(firebaseConfig) : null
 
-export const db = app ? getFirestore(app) : null
+/**
+ * Firestore keeps a copy of everything it has read in IndexedDB, so the shop can
+ * still look up stock and prices when the connection drops — the whole point of
+ * the app for whoever is minding the counter.
+ *
+ * Recording a sale still needs the network: it runs as a transaction, and those
+ * cannot be resolved offline.
+ */
+export const db = app
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  : null
+
 export const auth = app ? getAuth(app) : null
