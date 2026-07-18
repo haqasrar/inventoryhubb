@@ -8,7 +8,7 @@ export const SHOP = {
   phone: '9906634041',
   /** The line under the shop name on the printed bill book. */
   dealsIn:
-    'Deals in all kinds of Wooden Furniture, Steel Furniture, Plastic Furniture, Electronics, Stationery, Tailoring Machines and Manufacturing of Iron etc.',
+    'Deals in all kinds of Wooden Furniture, Steel Furniture, Plastic Furniture, Electronics, Stationery, Tailoring Machines, Iron Items and Manufacturing of Iron etc.',
   address: 'Hajin Sonawari, Opposite Bus Stand, Hajin, Bandipora, Jammu and Kashmir — 193501',
   /** Prefix for bill numbers, e.g. UE-0001. */
   billPrefix: 'UE',
