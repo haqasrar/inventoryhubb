@@ -38,6 +38,11 @@ export default function Signup() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center">
+          <img
+            src="/app-logo.png"
+            alt="InventoryHub"
+            className="mx-auto mb-5 h-10 w-auto max-w-full object-contain"
+          />
           <h1 className="text-xl font-semibold">Create your shop account</h1>
           <p className="mt-2 text-sm text-slate-500">
             Your own stock, bills and history — separate from every other shop.

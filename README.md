@@ -37,7 +37,8 @@ a price here updates the product everywhere, not just that delivery.
 
 The Dashboard shows two different values for the same stock: **Stock value** is what you paid for
 it, **Selling value** is what it will fetch on the shop floor. The gap between them is the profit
-sitting on your shelves.
+sitting on your shelves. **Stock by type** splits both of those across the types you set up, so you
+can see which part of the shop your money is tied up in.
 
 ## Bills
 
@@ -55,39 +56,64 @@ prefix — are edited **inside the app**, under **Shop details** in the sidebar.
 the sidebar, on the Dashboard banner, and in the footer of every page. Nothing about a particular
 shop lives in the code any more.
 
-## Logo
+## Logos
 
-The original artwork is `assets/logo.png`. It arrived with a checkerboard **painted into the
-pixels** (it looked transparent but was not — every pixel was opaque), so the background was
-stripped and two transparent versions were generated into `public/`:
+There are two unrelated kinds of artwork here, and keeping them apart is the whole point.
 
-- `logo.png` — full logo, icon + wordmark. Printed on bills and shown on the Dashboard banner, for
-  a shop whose **Logo image** field points at it.
-- `logo-mark.png` — icon only. Used in the sidebar, mobile header, footer, and as the favicon.
+### The app's own — InventoryHub
 
-A shop only prints a logo if it has filled in the **Logo image** field under Shop details; every
-other shop prints its **name** as the bill heading instead. That is deliberate — no shop should
-ever print another shop's logo on its bills.
-
-Both are pure black line art on real transparency, so they sit on any light background. If you
-replace the artwork, keep the same two filenames. Note the black ink is invisible on dark
-backgrounds — a white version would be needed for that.
-
-To redo this after swapping `assets/logo.png`:
+`assets/main.png` is the InventoryHub lockup. It arrived with a real alpha channel already cut
+(the grey backdrop behind it sits at alpha 0), so nothing has to be keyed out — it only needs
+cropping and splitting:
 
 ```bash
-node scripts/prepare-logo.cjs .
+node scripts/prepare-brand.cjs .
 ```
 
-It strips the background, crops to the artwork, splits the icon from the wordmark, and writes both
-files. Pure Node — no image libraries needed.
+That writes into `public/`:
+
+- `app-logo.png` — cube + wordmark. The login and signup screens.
+- `app-mark.png` — cube only. The favicon, and the sidebar/footer fallback for a shop with no logo
+  of its own.
+- `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png` — home-screen icons,
+  the mark centred on slate-900. Dark rather than white because the cube is a pale glowing shape
+  that would wash out. The maskable one keeps its artwork inside the safe zone, since Android crops
+  it to the launcher's shape.
+
+Colour is preserved throughout, and resampling runs on premultiplied alpha so the grey still
+sitting in the RGB of the transparent pixels cannot bleed into the edges as a fringe.
+
+### A shop's own
+
+Shops **upload their own** logo and signature under Shop details. A shop without a logo prints its
+**name** as the bill heading, and a shop without a signature gets blank space to sign by hand — no
+shop ever prints another shop's artwork, and InventoryHub's mark never appears on a customer's bill.
+
+Uploads are shrunk in the browser (logo to 600×300, signature to 400×200) and stored as data URLs
+**inside the shop's Firestore document**. Firebase Storage would be the usual home for them, but it
+needs the paid Blaze plan, and a shop should not have to add a card to put its logo on a bill. Each
+image is capped at ~90 KB, well inside Firestore's 1 MB per-document limit, and they arrive with
+the shop details in a single read — so a bill printed with no connection still carries them.
+
+PNG is tried first, because logos and signatures are usually line art on transparency that JPEG
+cannot keep. A photographed signature that will not fit as PNG falls back to JPEG on white. See
+[`src/utils/image.js`](src/utils/image.js).
+
+### The first shop's files
+
+`public/logo.png` and `public/logo-mark.png` are Umer Enterprises' artwork, from when the app
+served that one shop. They are still shipped because that shop's document points at `/logo.png`,
+and they are used by nothing else. `assets/logo.png` and
+[`scripts/prepare-logo.cjs`](scripts/prepare-logo.cjs) are how they were made: that artwork had a
+checkerboard **painted into the pixels** (it looked transparent but every pixel was opaque), so the
+script keys it out by luminance and flattens the result to black line art. It is kept for that
+shop's sake — new artwork should go through `prepare-brand.cjs`, which preserves colour.
 
 ## Signature
 
 `public/signature.png` is the first proprietor's signature, printed above the "For <shop name>" line
-on that shop's bills only — a shop prints a signature just when its **Signature image** field under
-Shop details points at one, and otherwise gets blank space to sign by hand. It was lifted off a
-photo of ruled paper by
+on that shop's bills only. Every other shop uploads its own under Shop details, or gets blank space
+to sign by hand. It was lifted off a photo of ruled paper by
 [`scripts/prepare-signature.cjs`](scripts/prepare-signature.cjs) — see
 [`scripts/prepare-signature.md`](scripts/prepare-signature.md) for how and why that differs from the
 logo cleanup.
@@ -134,15 +160,12 @@ screen, without a browser address bar. No Play Store, no APK.
 Updates arrive by themselves. A new deploy replaces the cached app the next time it is opened —
 nobody has to reinstall anything.
 
-Icons are generated from `public/logo-mark.png`:
+Icons come from the InventoryHub mark — see [Logos](#logos) — and are rebuilt with
+`node scripts/prepare-brand.cjs .`
 
-```bash
-node scripts/prepare-icons.cjs .
-```
-
-The mark is black on transparency, which would vanish on a dark wallpaper, so the script
-composites it onto white. The maskable icon keeps the artwork inside the 80% safe zone because
-Android crops it to the launcher's shape.
+[`scripts/prepare-icons.cjs`](scripts/prepare-icons.cjs) is the older one, which flattens black
+line art onto white. It made the first shop's icons and is no longer part of the build; running it
+would overwrite the InventoryHub icons with a black-and-white version.
 
 ### Working offline
 
@@ -200,10 +223,32 @@ themselves up.
 ## Accounts and shops
 
 An owner taps **Create an account**, picks a **username** and a password, and is then asked once
-for their shop's details — name, owner, GSTIN, phone, address, what the shop deals in, and the bill
-prefix. That creates their `shops/{uid}` document, and from that moment they have their own stock,
-their own bills and their own history. They can change any of those details later under **Shop
-details**.
+for their shop's details — name, owner, GST number, phone, address, what the shop deals in, the
+bill prefix, and optionally a logo and signature to upload. That creates their `shops/{uid}`
+document, and from that moment they have their own stock, their own bills and their own history.
+They can change any of those details later under **Shop details**.
+
+### What the shop sells
+
+Products used to be either Electronics or Furniture, hard-coded. Each shop now writes **its own
+list** under Shop details — a hardware shop and a chemist have nothing in common here. The list
+drives the type buttons on the product form, the filter on Products, and a **Stock by type**
+breakdown on the Dashboard showing how many products, how many items, and how much money is sitting
+in each.
+
+Up to 12 types, 24 characters each, de-duplicated case-insensitively so "Paints" and "paints"
+cannot both appear — the owner's own capitalisation is kept. At least one is required.
+
+**Removing a type does not touch the products already filed under it.** They keep their old label,
+it still shows in History and on the Dashboard, and editing such a product keeps its type as a
+choice. Rewriting a shop's records to match a dropdown edit would be far worse than an extra line
+on a screen.
+
+**Shop name, owner and GST number are required.** The GST number is normalised — spaces stripped,
+uppercased — and must be 15 letters and numbers, so the same number typed three different ways
+prints identically on every bill. Note this means a shop that is **not** GST registered cannot
+finish signup; drop the check in `cleanDetails()` in
+[`src/services/shopService.js`](src/services/shopService.js) if that is ever wanted.
 
 **No email address is asked for anywhere.** Firebase Auth has no concept of a username, so each one
 is turned into an address behind the scenes — `hajinsteel` signs in as

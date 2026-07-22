@@ -60,8 +60,9 @@ export default function Layout() {
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex items-center gap-3 px-5 py-6">
+          {/* The shop's own logo if it has uploaded one, otherwise the app's mark. */}
           <img
-            src="/logo-mark.png"
+            src={shop.logo || '/app-mark.png'}
             alt=""
             className="size-11 shrink-0 object-contain"
           />
@@ -125,7 +126,7 @@ export default function Layout() {
 
       {/* Mobile header */}
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-        <img src="/logo-mark.png" alt="" className="size-9 shrink-0 object-contain" />
+        <img src={shop.logo || '/app-mark.png'} alt="" className="size-9 shrink-0 object-contain" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold leading-tight">{shop.name}</p>
           {shop.tagline && <p className="text-[11px] text-slate-500">{shop.tagline}</p>}

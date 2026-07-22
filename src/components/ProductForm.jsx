@@ -2,12 +2,10 @@ import { useState } from 'react'
 import Modal from './Modal'
 import Field, { inputClass } from './Field'
 import { formatINR } from '../utils/format'
-
-const CATEGORIES = ['Electronics', 'Furniture']
+import { useShop } from '../context/useShop'
 
 const BLANK = {
   name: '',
-  category: 'Electronics',
   costPrice: '',
   sellPrice: '',
   quantity: '',
@@ -34,9 +32,19 @@ function validate(values) {
 }
 
 export default function ProductForm({ product, onSubmit, onClose }) {
-  const [values, setValues] = useState(product ? { ...product } : BLANK)
+  const { shop } = useShop()
+
+  const [values, setValues] = useState(
+    product ? { ...product } : { ...BLANK, category: shop.categories[0] },
+  )
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+
+  // A product keeps whatever it was filed under, even if the owner has since removed
+  // that type — editing its price must not silently re-file it under something else.
+  const choices = shop.categories.includes(values.category)
+    ? shop.categories
+    : [...shop.categories, values.category]
 
   const set = (key) => (e) => setValues((v) => ({ ...v, [key]: e.target.value }))
 
@@ -73,7 +81,7 @@ export default function ProductForm({ product, onSubmit, onClose }) {
 
         <Field label="Type">
           <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((c) => (
+            {choices.map((c) => (
               <button
                 key={c}
                 type="button"

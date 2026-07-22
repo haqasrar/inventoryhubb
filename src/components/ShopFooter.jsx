@@ -9,7 +9,11 @@ export default function ShopFooter() {
     <footer className="mt-10 border-t border-slate-200 pt-6 print:hidden">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
-          <img src="/logo-mark.png" alt="" className="size-10 shrink-0 object-contain" />
+          <img
+            src={shop.logo || '/app-mark.png'}
+            alt=""
+            className="size-10 shrink-0 object-contain"
+          />
           <div>
             <p className="font-semibold leading-tight">{shop.name}</p>
             {shop.tagline && <p className="text-xs text-slate-500">{shop.tagline}</p>}

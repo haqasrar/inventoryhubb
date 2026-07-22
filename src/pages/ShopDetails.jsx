@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Store, Check } from 'lucide-react'
 import { useShop } from '../context/useShop'
 import { useAuth } from '../context/useAuth'
-import { BLANK_SHOP, DEFAULT_BILL_PREFIX } from '../config/shop'
+import { BLANK_SHOP, DEFAULT_BILL_PREFIX, DEFAULT_CATEGORIES } from '../config/shop'
 import Field, { inputClass } from '../components/Field'
+import CategoryEditor from '../components/CategoryEditor'
+import ImageUpload from '../components/ImageUpload'
 import PageHeader from '../components/PageHeader'
 
 /**
@@ -19,13 +21,25 @@ export default function ShopDetails() {
   const { signOut } = useAuth()
 
   const firstRun = !shop
-  const [form, setForm] = useState(() => ({ ...BLANK_SHOP, ...(shop ?? {}) }))
+  // A new shop starts with the two defaults filled in rather than an empty list, so
+  // setup is a quick edit instead of a blank page.
+  const [form, setForm] = useState(() => ({
+    ...BLANK_SHOP,
+    categories: DEFAULT_CATEGORIES,
+    ...(shop ?? {}),
+  }))
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const set = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }))
+    setSaved(false)
+  }
+
+  /** The image pickers hand back a value directly rather than an event. */
+  const setValue = (key) => (value) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
     setSaved(false)
   }
 
@@ -50,7 +64,7 @@ export default function ShopDetails() {
           type="text"
           value={form.name}
           onChange={set('name')}
-          placeholder="Umer Enterprises"
+          placeholder="Your shop's name"
           className={inputClass}
         />
       </Field>
@@ -60,7 +74,7 @@ export default function ShopDetails() {
           type="text"
           value={form.owner}
           onChange={set('owner')}
-          placeholder="Full name"
+          placeholder="Proprietor's full name"
           className={inputClass}
         />
       </Field>
@@ -70,18 +84,29 @@ export default function ShopDetails() {
           type="text"
           value={form.tagline}
           onChange={set('tagline')}
-          placeholder="Electronics & Furniture"
+          placeholder="What the shop is known for"
           className={inputClass}
         />
       </Field>
 
-      <Field label="GSTIN" hint="Optional. Leave blank if the shop is not registered.">
+      <Field label="GST number" hint="Required. 15 letters and numbers, printed on every bill.">
         <input
           type="text"
           value={form.gstin}
-          onChange={set('gstin')}
+          // Uppercased as it is typed: a GST number is never lowercase, and seeing it
+          // the way it will print catches a mistyped one on the spot.
+          onChange={(e) => {
+            setForm((prev) => ({ ...prev, gstin: e.target.value.toUpperCase() }))
+            setSaved(false)
+          }}
           autoCapitalize="characters"
-          className={inputClass}
+          autoCorrect="off"
+          spellCheck="false"
+          // Not 15: a number pasted with spaces in it must fit, since the spaces are
+          // only stripped when it is saved.
+          maxLength={20}
+          placeholder="01ABCDE1234F1Z5"
+          className={`${inputClass} tabular`}
         />
       </Field>
 
@@ -91,6 +116,7 @@ export default function ShopDetails() {
           value={form.phone}
           onChange={set('phone')}
           inputMode="tel"
+          placeholder="10-digit mobile number"
           className={inputClass}
         />
       </Field>
@@ -118,6 +144,8 @@ export default function ShopDetails() {
         />
       </Field>
 
+      <CategoryEditor value={form.categories} onChange={setValue('categories')} />
+
       <Field
         label="Bill number prefix"
         hint={`Bills are numbered like UE-0001. Blank uses ${DEFAULT_BILL_PREFIX}.`}
@@ -132,31 +160,23 @@ export default function ShopDetails() {
         />
       </Field>
 
-      <Field
-        label="Logo image"
-        hint="Optional path or link to your logo, e.g. /logo.png. Blank prints the shop name instead."
-      >
-        <input
-          type="text"
-          value={form.logo}
-          onChange={set('logo')}
-          placeholder="/logo.png"
-          className={inputClass}
-        />
-      </Field>
+      <ImageUpload
+        label="Shop logo"
+        hint="Optional. Printed at the top of your bills. Without one, your shop name is printed instead."
+        value={form.logo}
+        onChange={setValue('logo')}
+        maxWidth={600}
+        maxHeight={300}
+      />
 
-      <Field
-        label="Signature image"
-        hint="Optional. Printed above the signing line on bills. Blank leaves space to sign by hand."
-      >
-        <input
-          type="text"
-          value={form.signature}
-          onChange={set('signature')}
-          placeholder="/signature.png"
-          className={inputClass}
-        />
-      </Field>
+      <ImageUpload
+        label="Signature"
+        hint="Optional. A photo or scan of the owner's signature, printed above the signing line. Without one, the bill leaves space to sign by hand."
+        value={form.signature}
+        onChange={setValue('signature')}
+        maxWidth={400}
+        maxHeight={200}
+      />
     </>
   )
 

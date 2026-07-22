@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react'
 import { inputClass } from './Field'
+import { useShop } from '../context/useShop'
 
-const CATEGORIES = ['All', 'Electronics', 'Furniture']
 const STATUSES = [
   { value: 'all', label: 'All stock' },
   { value: 'ok', label: 'In stock' },
@@ -10,6 +10,13 @@ const STATUSES = [
 ]
 
 export default function SearchFilterBar({ query, onQuery, category, onCategory, status, onStatus }) {
+  const { shop } = useShop()
+
+  // The chosen filter stays listed even after that type is removed from the shop,
+  // otherwise the dropdown would show a blank while the list stayed filtered.
+  const categories = ['All', ...shop.categories]
+  if (!categories.includes(category)) categories.push(category)
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="relative flex-1">
@@ -28,7 +35,7 @@ export default function SearchFilterBar({ query, onQuery, category, onCategory, 
           onChange={(e) => onCategory(e.target.value)}
           className={`${inputClass} sm:w-40`}
         >
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <option key={c} value={c}>
               {c === 'All' ? 'All types' : c}
             </option>

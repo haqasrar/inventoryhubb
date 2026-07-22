@@ -10,7 +10,12 @@
 
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './firebase'
-import { BLANK_SHOP, DEFAULT_BILL_PREFIX } from '../config/shop'
+import {
+  BLANK_SHOP,
+  CATEGORY_RULES,
+  DEFAULT_BILL_PREFIX,
+  DEFAULT_CATEGORIES,
+} from '../config/shop'
 
 export const shopDoc = (shopId) => doc(db, 'shops', shopId)
 
@@ -24,18 +29,57 @@ function normalize(id, data) {
     ...BLANK_SHOP,
     ...data,
     billPrefix: data.billPrefix || DEFAULT_BILL_PREFIX,
+    // Shops saved before categories existed have none. Falling back here rather than
+    // migrating means the product form always has something to offer.
+    categories: data.categories?.length ? data.categories : DEFAULT_CATEGORIES,
   }
 }
 
-/** Trims what was typed and rejects the two fields a bill cannot be printed without. */
+/**
+ * Trims and de-duplicates the list of things a shop sells. Compared case-insensitively
+ * so "Paints" and "paints" cannot both sit in the filter dropdown, but the owner's own
+ * capitalisation is what gets kept and shown.
+ */
+export function cleanCategories(list) {
+  const seen = new Set()
+  const out = []
+
+  for (const raw of Array.isArray(list) ? list : []) {
+    const name = String(raw ?? '')
+      .trim()
+      .slice(0, CATEGORY_RULES.maxLength)
+    const key = name.toLowerCase()
+    if (!name || seen.has(key)) continue
+    seen.add(key)
+    out.push(name)
+  }
+
+  return out.slice(0, CATEGORY_RULES.max)
+}
+
+/** Trims what was typed and rejects the fields a bill cannot be printed without. */
 export function cleanDetails(details) {
   const clean = {}
   for (const key of Object.keys(BLANK_SHOP)) {
+    if (key === 'categories') continue
     clean[key] = String(details[key] ?? '').trim()
+  }
+
+  clean.categories = cleanCategories(details.categories)
+  if (clean.categories.length === 0) {
+    throw new Error('Add at least one type of product the shop sells.')
   }
 
   if (!clean.name) throw new Error('Enter the shop name.')
   if (!clean.owner) throw new Error("Enter the owner's name.")
+
+  // Written without its spaces, and uppercased, so the same number typed three
+  // different ways prints the same way on every bill.
+  clean.gstin = clean.gstin.replace(/\s+/g, '').toUpperCase()
+  if (!clean.gstin) throw new Error('Enter the shop’s GST number.')
+  if (!/^[0-9A-Z]{15}$/.test(clean.gstin)) {
+    throw new Error('A GST number is exactly 15 letters and numbers, like 01CTBPA2880C1ZJ.')
+  }
 
   // Bill numbers read as UE-0001, so the prefix is uppercased for the owner.
   clean.billPrefix = (clean.billPrefix || DEFAULT_BILL_PREFIX).toUpperCase()

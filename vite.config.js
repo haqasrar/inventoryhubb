@@ -12,12 +12,21 @@ export default defineConfig({
       // A new deploy replaces the cached app on the next open, so the shop never
       // has to reinstall anything to get a fix.
       registerType: 'autoUpdate',
-      includeAssets: ['apple-touch-icon.png', 'logo.png', 'logo-mark.png', 'signature.png'],
+      // logo.png and signature.png are the first shop's own artwork, still pointed at
+      // by its shop document; the app-* files are InventoryHub's own branding.
+      includeAssets: [
+        'apple-touch-icon.png',
+        'app-logo.png',
+        'app-mark.png',
+        'logo.png',
+        'logo-mark.png',
+        'signature.png',
+      ],
       manifest: {
         // Named for the app, not for any one shop: the same installation now serves
         // every shop that signs up, and each one sets its own name inside the app.
-        name: 'Stock & Billing',
-        short_name: 'Stock',
+        name: 'InventoryHub — Stock & Billing',
+        short_name: 'InventoryHub',
         description: 'Stock, sales and billing for your shop.',
         start_url: '/',
         scope: '/',

@@ -21,6 +21,12 @@ export const BLANK_SHOP = {
   /** Prefix for bill numbers, e.g. UE-0001. */
   billPrefix: '',
   /**
+   * The kinds of thing this shop sells — every product is filed under one. Owners
+   * write their own, because a hardware shop and a chemist have nothing in common
+   * here. Never empty: a product has to be filed under something.
+   */
+  categories: [],
+  /**
    * Optional path or URL to the shop's own logo, printed at the top of its bills.
    * Left blank the bill prints the shop name as a heading instead — which is what
    * every shop gets until it has artwork to point at.
@@ -36,6 +42,15 @@ export const BLANK_SHOP = {
 
 /** Used when an owner leaves the bill prefix blank. */
 export const DEFAULT_BILL_PREFIX = 'INV'
+
+/**
+ * What a shop starts with before it has said what it sells. Only a starting point —
+ * the owner renames or replaces these under Shop details.
+ */
+export const DEFAULT_CATEGORIES = ['Electronics', 'Furniture']
+
+/** Kept short so the filter dropdown and the product form stay readable. */
+export const CATEGORY_RULES = { maxLength: 24, max: 12 }
 
 /**
  * Shops sign in with a username. Firebase Auth only understands email addresses, so

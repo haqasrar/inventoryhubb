@@ -50,6 +50,8 @@ const SEED = {
     'Deals in all kinds of Wooden Furniture, Steel Furniture, Plastic Furniture, Electronics, Stationery, Tailoring Machines, Iron Items and Manufacturing of Iron etc.',
   address: 'Hajin Sonawari, Opposite Bus Stand, Hajin, Bandipora, Jammu and Kashmir — 193501',
   billPrefix: 'UE',
+  // The two types every existing product is already filed under.
+  categories: ['Electronics', 'Furniture'],
   logo: '/logo.png',
   signature: '/signature.png',
 }

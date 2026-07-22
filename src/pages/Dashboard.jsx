@@ -11,6 +11,7 @@ import {
   Plus,
 } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
+import { useShop } from '../context/useShop'
 import { formatINR, formatDateTime, isToday, stockStatus } from '../utils/format'
 import { paymentOf, paymentLabel, paymentStyle } from '../utils/payment'
 import PageHeader from '../components/PageHeader'
@@ -21,6 +22,36 @@ import ShopBanner from '../components/ShopBanner'
 
 export default function Dashboard() {
   const { products, transactions } = useInventory()
+  const { shop } = useShop()
+
+  /**
+   * What the shop is holding, split by the types the owner set up. Types with nothing
+   * in them are dropped rather than shown as a row of zeroes, and anything filed under
+   * a type since removed still gets its own row — the stock is real and has to be
+   * accounted for somewhere.
+   */
+  const byCategory = useMemo(() => {
+    const totals = new Map()
+    for (const name of shop.categories) {
+      totals.set(name, { name, count: 0, items: 0, stockValue: 0, sellingValue: 0 })
+    }
+
+    for (const p of products) {
+      const name = p.category ?? 'Uncategorised'
+      if (!totals.has(name)) {
+        totals.set(name, { name, count: 0, items: 0, stockValue: 0, sellingValue: 0 })
+      }
+      const row = totals.get(name)
+      row.count += 1
+      row.items += p.quantity
+      row.stockValue += p.costPrice * p.quantity
+      row.sellingValue += p.sellPrice * p.quantity
+    }
+
+    return [...totals.values()]
+      .filter((row) => row.count > 0)
+      .sort((a, b) => b.stockValue - a.stockValue)
+  }, [products, shop.categories])
 
   const stats = useMemo(() => {
     const stockValue = products.reduce((sum, p) => sum + p.costPrice * p.quantity, 0)
@@ -108,6 +139,37 @@ export default function Dashboard() {
           tone={stats.outOfStock.length > 0 ? 'red' : 'amber'}
         />
       </div>
+
+      {byCategory.length > 0 && (
+        <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 className="font-semibold">Stock by type</h2>
+            <Link to="/shop" className="text-sm font-medium text-indigo-600 hover:underline">
+              Edit types
+            </Link>
+          </div>
+
+          <ul className="divide-y divide-slate-100">
+            {byCategory.map((row) => (
+              <li key={row.name} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{row.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {row.count} product{row.count === 1 ? '' : 's'} · {row.items} item
+                    {row.items === 1 ? '' : 's'} in stock
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="tabular font-semibold">{formatINR(row.stockValue)}</p>
+                  <p className="text-xs text-slate-500">
+                    sells for {formatINR(row.sellingValue)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-5">
         {/* Low stock */}
