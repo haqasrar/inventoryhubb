@@ -1,8 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
-import * as api from '../services/inventoryService'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createInventoryApi } from '../services/inventoryService'
+import { useShop } from './useShop'
 import { InventoryContext } from './useInventory'
 
 export function InventoryProvider({ children }) {
+  const { shop } = useShop()
+
+  /**
+   * Bound to this shop, so every call below reads and writes under `shops/{id}`.
+   * Rebuilt if the signed-in shop changes, which tears the subscriptions below down
+   * and starts them again against the new shop.
+   */
+  const api = useMemo(
+    () => createInventoryApi({ id: shop.id, billPrefix: shop.billPrefix }),
+    [shop.id, shop.billPrefix],
+  )
+
   const [products, setProducts] = useState([])
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +69,7 @@ export function InventoryProvider({ children }) {
       stopProducts()
       stopRecent()
     }
-  }, [])
+  }, [api])
 
   /* Mutations write to Firestore; the subscriptions above push the result back. */
 
@@ -66,7 +79,7 @@ export function InventoryProvider({ children }) {
       showToast(`${product.name} added with ${product.quantity} in stock.`)
       return product
     },
-    [showToast],
+    [api, showToast],
   )
 
   const updateProduct = useCallback(
@@ -75,7 +88,7 @@ export function InventoryProvider({ children }) {
       showToast(`${patch.name ?? 'Product'} updated.`)
       return product
     },
-    [showToast],
+    [api, showToast],
   )
 
   const deleteProduct = useCallback(
@@ -83,7 +96,7 @@ export function InventoryProvider({ children }) {
       await api.deleteProduct(product.id)
       showToast(`${product.name} removed from the shop.`)
     },
-    [showToast],
+    [api, showToast],
   )
 
   const recordSaleBill = useCallback(
@@ -97,7 +110,7 @@ export function InventoryProvider({ children }) {
       )
       return bill
     },
-    [showToast],
+    [api, showToast],
   )
 
   const recordRestock = useCallback(
@@ -112,11 +125,11 @@ export function InventoryProvider({ children }) {
       showToast(`Added ${quantity} × ${product.name}. Now ${product.quantity} in stock.`)
       return product
     },
-    [showToast],
+    [api, showToast],
   )
 
-  const getBill = useCallback((billNumber) => api.getBill(billNumber), [])
-  const getTransactions = useCallback((opts) => api.getTransactions(opts), [])
+  const getBill = useCallback((billNumber) => api.getBill(billNumber), [api])
+  const getTransactions = useCallback((opts) => api.getTransactions(opts), [api])
 
   const value = {
     products,

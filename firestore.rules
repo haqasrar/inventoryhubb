@@ -3,29 +3,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    // Every shop's id IS its owner's auth uid, so who may touch a shop is decided
+    // without reading any other document — no extra billed read per request, and no
+    // lookup table that could go stale.
+    function owns(shopId) {
+      return request.auth != null && request.auth.uid == shopId;
     }
 
-    // Stock. Anyone signed in with the shop login can manage products.
-    match /products/{productId} {
-      allow read, write: if signedIn();
+    match /shops/{shopId} {
+      allow read: if owns(shopId);
+
+      // An owner may only ever open a shop under their own uid.
+      allow create: if owns(shopId) && request.resource.data.ownerUid == shopId;
+
+      // Details can be edited freely, but ownership cannot be handed to someone else.
+      allow update: if owns(shopId) && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // Deleting the shop would orphan its stock and history below it. Done from the
+      // console if it is ever really wanted.
+      allow delete: if false;
+
+      // Stock. The owner of this shop, and nobody else.
+      match /products/{productId} {
+        allow read, write: if owns(shopId);
+      }
+
+      // Sales and deliveries are an audit trail: they may be created and read,
+      // but never edited or deleted. History must stay trustworthy — it is the
+      // record of where the stock went and who owes money.
+      match /transactions/{transactionId} {
+        allow read, create: if owns(shopId);
+        allow update, delete: if false;
+      }
+
+      // Bill number counter. Only ever incremented inside a transaction.
+      match /counters/{counterId} {
+        allow read, write: if owns(shopId);
+      }
     }
 
-    // Sales and deliveries are an audit trail: they may be created and read,
-    // but never edited or deleted. History must stay trustworthy — it is the
-    // record of where the stock went and who owes money.
-    match /transactions/{transactionId} {
-      allow read, create: if signedIn();
-      allow update, delete: if false;
-    }
-
-    // Bill number counter. Only ever incremented inside a transaction.
-    match /counters/{counterId} {
-      allow read, write: if signedIn();
-    }
-
-    // Anything not named above is denied.
+    // Anything not named above is denied — including the old top-level products,
+    // transactions and counters collections used before shops had their own space.
+    // Those are left in the database as a backup of the first shop's data and are
+    // read from the Firebase console, never by the app.
     match /{document=**} {
       allow read, write: if false;
     }

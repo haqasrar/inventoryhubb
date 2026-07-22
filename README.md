@@ -1,8 +1,11 @@
 # Shop Stock
 
-Inventory website for an electronics and furniture shop. Anyone minding the counter can see what
-is in stock and at what price; selling an item takes it out of stock automatically, and receiving
-an order puts it back in.
+Inventory website for a small shop. Anyone minding the counter can see what is in stock and at what
+price; selling an item takes it out of stock automatically, and receiving an order puts it back in.
+
+**Any shop owner can open their own account** with a username and password — no email address is
+asked for anywhere. Each shop gets its own products, bills, history and bill numbering, and cannot
+see any other shop's data — see [Accounts and shops](#accounts-and-shops).
 
 ## Running it
 
@@ -44,10 +47,13 @@ whole purchase. It appears immediately with a **Print** button, and can be reope
 of its rows in History.
 
 Bills are numbered `UE-0001`, `UE-0002`, … and the counter only ever moves forward, so no two
-bills can share a number. Shop details printed on every bill live in
-[`src/config/shop.js`](src/config/shop.js) — edit that one file to change the name, owner, GSTIN,
-address, or the bill prefix. They also appear in the sidebar, on the Dashboard banner, and in the
-footer of every page.
+bills can share a number. Each shop has its own prefix and its own counter, so two shops both
+start at `0001` without ever colliding.
+
+Shop details printed on every bill — name, owner, GSTIN, phone, address, "deals in" line, bill
+prefix — are edited **inside the app**, under **Shop details** in the sidebar. They also appear in
+the sidebar, on the Dashboard banner, and in the footer of every page. Nothing about a particular
+shop lives in the code any more.
 
 ## Logo
 
@@ -55,8 +61,13 @@ The original artwork is `assets/logo.png`. It arrived with a checkerboard **pain
 pixels** (it looked transparent but was not — every pixel was opaque), so the background was
 stripped and two transparent versions were generated into `public/`:
 
-- `logo.png` — full logo, icon + wordmark. Used on bills and the Dashboard banner.
+- `logo.png` — full logo, icon + wordmark. Printed on bills and shown on the Dashboard banner, for
+  a shop whose **Logo image** field points at it.
 - `logo-mark.png` — icon only. Used in the sidebar, mobile header, footer, and as the favicon.
+
+A shop only prints a logo if it has filled in the **Logo image** field under Shop details; every
+other shop prints its **name** as the bill heading instead. That is deliberate — no shop should
+ever print another shop's logo on its bills.
 
 Both are pure black line art on real transparency, so they sit on any light background. If you
 replace the artwork, keep the same two filenames. Note the black ink is invisible on dark
@@ -73,14 +84,16 @@ files. Pure Node — no image libraries needed.
 
 ## Signature
 
-`public/signature.png` is the proprietor's signature, printed above the "For Umer Enterprises" line
-on every bill. It was lifted off a photo of ruled paper by
+`public/signature.png` is the first proprietor's signature, printed above the "For <shop name>" line
+on that shop's bills only — a shop prints a signature just when its **Signature image** field under
+Shop details points at one, and otherwise gets blank space to sign by hand. It was lifted off a
+photo of ruled paper by
 [`scripts/prepare-signature.cjs`](scripts/prepare-signature.cjs) — see
 [`scripts/prepare-signature.md`](scripts/prepare-signature.md) for how and why that differs from the
 logo cleanup.
 
-If `public/signature.png` is missing, the bill falls back to blank signing space rather than showing
-a broken image.
+If the file a shop points at is missing, the bill falls back to blank signing space rather than
+showing a broken image.
 
 > ### ⚠️ This is a Cash Memo, not a GST tax invoice
 >
@@ -147,13 +160,18 @@ Everything is in **Cloud Firestore**, so the shop computer and every phone see t
 Screens subscribe to the database: when someone records a sale, other open devices update on their
 own without a refresh.
 
-Three collections:
+Everything hangs off the shop it belongs to, which is what keeps two shops apart:
 
-| Collection      | Holds                                              |
-| --------------- | -------------------------------------------------- |
-| `products`      | One document per product                           |
-| `transactions`  | One document per sale line or delivery             |
-| `counters/bills`| The bill number counter                            |
+| Path                                | Holds                                  |
+| ----------------------------------- | -------------------------------------- |
+| `shops/{shopId}`                    | The shop's name, owner, GSTIN, address |
+| `shops/{shopId}/products`           | One document per product               |
+| `shops/{shopId}/transactions`       | One document per sale line or delivery |
+| `shops/{shopId}/counters/bills`     | That shop's bill number counter        |
+
+`shopId` **is the owner's Firebase Auth uid**. That means no lookup table is needed to find a
+signed-in owner's shop, and [`firestore.rules`](firestore.rules) can decide access with a plain
+`request.auth.uid == shopId` — no extra billed read on every request.
 
 Sales and deliveries are an **audit trail**: [`firestore.rules`](firestore.rules) allows them to be
 created and read but never edited or deleted, by anyone. History is the record of where stock went
@@ -174,27 +192,83 @@ npm run dev
 The values in `.env.local` are **not secrets** — Firebase ships them to every browser. The data is
 protected by the login and by `firestore.rules`.
 
-In the Firebase console you need: **Firestore Database** created, **Authentication → Email/Password**
-enabled, and one user created under **Authentication → Users**.
+In the Firebase console you need: **Firestore Database** created and **Authentication →
+Email/Password** enabled — that provider stays on even though nobody types an email, because it is
+what the synthesised addresses sign in against. You no longer create users by hand; owners sign
+themselves up.
 
-### Logging in with a username
+## Accounts and shops
 
-Firebase Auth only understands email addresses, so the app maps the username to one. Set both in
-[`src/config/shop.js`](src/config/shop.js):
+An owner taps **Create an account**, picks a **username** and a password, and is then asked once
+for their shop's details — name, owner, GSTIN, phone, address, what the shop deals in, and the bill
+prefix. That creates their `shops/{uid}` document, and from that moment they have their own stock,
+their own bills and their own history. They can change any of those details later under **Shop
+details**.
 
-```js
-export const LOGIN = {
-  username: 'umerenterprises',
-  email: 'the-address-the-firebase-user-was-created-with',
-}
+**No email address is asked for anywhere.** Firebase Auth has no concept of a username, so each one
+is turned into an address behind the scenes — `hajinsteel` signs in as
+`hajinsteel@shopstock.local`. Nobody sees or types that, and no mail is ever sent to it. The domain
+is deliberately not a real one; see `USERNAME_DOMAIN` in
+[`src/config/shop.js`](src/config/shop.js).
+
+Usernames are 3–20 characters, lowercase letters, numbers, dot, dash or underscore, and are
+lowercased as they are typed so `Hajin` and `hajin` cannot become two shops. Uniqueness needs no
+list of taken names: Firebase refuses a second account on the same address, so the signup itself is
+the check, and two people signing up at the same moment cannot both win.
+
+### Nobody can reset their own password
+
+There is no email address on an account, so there is nowhere to send a reset link and there is no
+"Forgot password?" anywhere in the app. The signup screen says so plainly, once.
+
+An owner who is signed in can change their own password from **Change password** in the sidebar.
+An owner who is **locked out** can only be rescued by you, in the Firebase console:
+**Authentication → Users → ⋮ → Reset password**, then tell them the new one. Budget for this
+happening — it is the price of username-only login.
+
+### The first shop's username
+
+The first shop on this installation was created by hand against a real email address, before
+signups existed. Its username `umerenterprises` maps to that address instead of the fake domain, so
+that owner signs in exactly as they always have — see `LEGACY_LOGIN` in
+[`src/config/shop.js`](src/config/shop.js). It is also blocked from being claimed at signup.
+
+### Stopping new signups
+
+Firebase console → **Authentication → Settings → User actions → uncheck "Enable create (sign-up)"**.
+The signup screen then reports that new accounts are switched off, and existing shops carry on
+unaffected.
+
+## Migrating the first shop (one-time)
+
+Before shops had their own space, data sat at the top level: `products`, `transactions`,
+`counters/bills`. [`scripts/migrate-to-shops.mjs`](scripts/migrate-to-shops.mjs) **copies** it
+under `shops/{uid}`. The originals are never touched — they stay in the database as a backup that
+the app can no longer read, and you delete them from the console when you are satisfied.
+
+The finished rules deny reading those old collections, so the migration needs a temporary ruleset
+that allows it. Three steps, in order:
+
+```bash
+# 1. Let the migration read the old collections
+#    (edit firebase.json: "rules": "firestore.migration.rules")
+npx firebase deploy --only firestore:rules
+
+# 2. Copy the data. Sign in as the shop being moved when it asks.
+node scripts/migrate-to-shops.mjs
+
+# 3. Put the real rules back
+#    (edit firebase.json: "rules": "firestore.rules")
+npx firebase deploy --only firestore:rules
 ```
 
-Staff type the username; the email swap happens behind the scenes. Keep `email` a **real inbox you
-can open** — that is what makes "Forgot password?" work. No password is stored in the code; Firebase
-checks it.
+Do not skip step 3 — [`firestore.migration.rules`](firestore.migration.rules) lets any signed-in
+account read the old top-level data, which is exactly what the finished rules exist to prevent.
 
-To change the password: sign in and use the change-password flow, or reset it from
-**Authentication → Users → ⋮ → Reset password** in the console.
+The script preserves document ids, so running it twice overwrites each copy with the same content
+rather than duplicating anything. It seeds the shop document from the details that used to be
+hard-coded in `src/config/shop.js`; check the `SEED` block at the top of the script before running
+it, and fix anything stale there or in **Shop details** afterwards.
 
 ## Deploying
 

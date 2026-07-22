@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Printer, X } from 'lucide-react'
-import { SHOP } from '../config/shop'
+import { useShop } from '../context/useShop'
 import { formatINR, formatDateTime } from '../utils/format'
 import { paymentLabel, paymentOf } from '../utils/payment'
 
@@ -13,6 +13,7 @@ import { paymentLabel, paymentOf } from '../utils/payment'
  */
 export default function Bill({ bill, onClose }) {
   const [hasSignature, setHasSignature] = useState(true)
+  const { shop } = useShop()
 
   if (!bill) return null
 
@@ -49,24 +50,34 @@ export default function Bill({ bill, onClose }) {
           <div className="px-6 py-6 sm:px-8 sm:py-8">
             {/* Shop header — laid out to match the shop's printed bill book. */}
             <div className="border-b-2 border-slate-900 pb-4 text-center">
-              <p className="text-xs text-slate-600">Prop: {SHOP.owner}</p>
+              {shop.owner && <p className="text-xs text-slate-600">Prop: {shop.owner}</p>}
 
-              <img
-                src="/logo.png"
-                alt={SHOP.name}
-                className="mx-auto my-2 h-16 w-auto max-w-full object-contain"
-              />
+              {/* A shop with its own artwork prints that; everyone else prints their
+                  name, so no bill ever carries another shop's logo. */}
+              {shop.logo ? (
+                <img
+                  src={shop.logo}
+                  alt={shop.name}
+                  className="mx-auto my-2 h-16 w-auto max-w-full object-contain"
+                />
+              ) : (
+                <h1 className="my-2 text-2xl font-bold uppercase tracking-wide">{shop.name}</h1>
+              )}
 
-              <p className="mx-auto max-w-lg text-[11px] leading-relaxed text-slate-600">
-                {SHOP.dealsIn}
-              </p>
-              <p className="mt-1.5 text-xs font-medium uppercase tracking-wide text-slate-700">
-                {SHOP.address}
-              </p>
+              {shop.dealsIn && (
+                <p className="mx-auto max-w-lg text-[11px] leading-relaxed text-slate-600">
+                  {shop.dealsIn}
+                </p>
+              )}
+              {shop.address && (
+                <p className="mt-1.5 text-xs font-medium uppercase tracking-wide text-slate-700">
+                  {shop.address}
+                </p>
+              )}
 
               <div className="tabular mt-1.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-medium text-slate-700">
-                <span>GSTIN: {SHOP.gstin}</span>
-                <span>Cell: {SHOP.phone}</span>
+                {shop.gstin && <span>GSTIN: {shop.gstin}</span>}
+                {shop.phone && <span>Cell: {shop.phone}</span>}
               </div>
             </div>
 
@@ -149,11 +160,12 @@ export default function Bill({ bill, onClose }) {
 
             <div className="mt-8 flex justify-end">
               <div className="text-center">
-                {/* Falls back to blank signing space if signature.png is missing,
-                    so a bill never prints with a broken image on it. */}
-                {hasSignature ? (
+                {/* Only this shop's own signature is ever printed, and a broken or
+                    missing file falls back to blank signing space rather than a
+                    broken image on a customer's bill. */}
+                {shop.signature && hasSignature ? (
                   <img
-                    src="/signature.png"
+                    src={shop.signature}
                     alt=""
                     onError={() => setHasSignature(false)}
                     className="mx-auto h-14 w-auto max-w-[180px] object-contain"
@@ -162,7 +174,7 @@ export default function Bill({ bill, onClose }) {
                   <div className="h-14" />
                 )}
                 <p className="border-t border-slate-400 px-6 pt-1 text-xs text-slate-600">
-                  For {SHOP.name}
+                  For {shop.name}
                 </p>
               </div>
             </div>

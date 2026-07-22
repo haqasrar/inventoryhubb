@@ -7,13 +7,14 @@ import {
   History as HistoryIcon,
   LogOut,
   Key,
+  Store,
 } from 'lucide-react'
 import { useState } from 'react'
 import Toast from './Toast'
 import ShopFooter from './ShopFooter'
 import InstallButton from './InstallButton'
-import { SHOP } from '../config/shop'
 import { useAuth } from '../context/useAuth'
+import { useShop } from '../context/useShop'
 import Modal from './Modal'
 
 const NAV = [
@@ -26,6 +27,7 @@ const NAV = [
 
 export default function Layout() {
   const { signOut, changePassword } = useAuth()
+  const { shop } = useShop()
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [cpError, setCpError] = useState('')
   const [cpBusy, setCpBusy] = useState(false)
@@ -64,8 +66,8 @@ export default function Layout() {
             className="size-11 shrink-0 object-contain"
           />
           <div className="min-w-0">
-            <p className="truncate font-semibold leading-tight">{SHOP.name}</p>
-            <p className="text-xs text-slate-500">Electronics & Furniture</p>
+            <p className="truncate font-semibold leading-tight">{shop.name}</p>
+            {shop.tagline && <p className="text-xs text-slate-500">{shop.tagline}</p>}
           </div>
         </div>
 
@@ -91,6 +93,19 @@ export default function Layout() {
 
         <div className="border-t border-slate-200 px-3 py-3 space-y-2">
           <InstallButton className="w-full" />
+          <NavLink
+            to="/shop"
+            className={({ isActive }) =>
+              `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                isActive
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+              }`
+            }
+          >
+            <Store size={18} />
+            Shop details
+          </NavLink>
           <button
             onClick={() => setShowChangePassword(true)}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
@@ -112,9 +127,17 @@ export default function Layout() {
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
         <img src="/logo-mark.png" alt="" className="size-9 shrink-0 object-contain" />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold leading-tight">{SHOP.name}</p>
-          <p className="text-[11px] text-slate-500">Electronics & Furniture</p>
+          <p className="truncate font-semibold leading-tight">{shop.name}</p>
+          {shop.tagline && <p className="text-[11px] text-slate-500">{shop.tagline}</p>}
         </div>
+        {/* The bottom bar is full, so shop details lives up here on phones. */}
+        <NavLink
+          to="/shop"
+          aria-label="Shop details"
+          className="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          <Store size={18} />
+        </NavLink>
         <button
           onClick={signOut}
           aria-label="Sign out"

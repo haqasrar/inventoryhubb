@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// TEMPORARY rules, used only while scripts/migrate-to-shops.mjs is running.
+//
+// They allow the one thing the real rules deliberately forbid: reading the old
+// top-level collections. The migration has to read them to copy them, and the
+// finished rules deny it so that a second shop signing up can never read the first
+// shop's data.
+//
+// Deploy these, run the migration, then deploy firestore.rules again — the steps are
+// written out in README.md. Do not leave these live.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function owns(shopId) {
+      return request.auth != null && request.auth.uid == shopId;
+    }
+
+    // The old home of the first shop's data. Read-only: the migration copies out of
+    // here and never writes back, so the originals survive untouched as a backup.
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /transactions/{transactionId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /counters/{counterId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // The new home. Same as the finished rules.
+    match /shops/{shopId} {
+      allow read, write: if owns(shopId);
+
+      match /{document=**} {
+        allow read, write: if owns(shopId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

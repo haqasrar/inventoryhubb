@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
-import { SHOP, LOGIN } from '../config/shop'
 import Field, { inputClass } from '../components/Field'
 import InstallButton from '../components/InstallButton'
 
@@ -28,8 +28,9 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center">
-          <img src="/logo.png" alt={SHOP.name} className="mx-auto h-20 w-auto object-contain" />
-          <p className="mt-3 text-sm text-slate-500">Stock &amp; Billing</p>
+          <img src="/logo-mark.png" alt="" className="mx-auto h-16 w-auto object-contain" />
+          <h1 className="mt-3 text-lg font-semibold">Stock &amp; Billing</h1>
+          <p className="mt-1 text-sm text-slate-500">Sign in to your shop</p>
         </div>
 
         <form
@@ -45,7 +46,7 @@ export default function Login() {
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={LOGIN.username}
+              placeholder="myshop"
               className={inputClass}
             />
           </Field>
@@ -77,13 +78,16 @@ export default function Login() {
           </button>
         </form>
 
+        <p className="mt-5 text-center text-sm text-slate-500">
+          New shop?{' '}
+          <Link to="/signup" className="font-semibold text-indigo-600 hover:text-indigo-700">
+            Create an account
+          </Link>
+        </p>
+
         <div className="mt-5 flex justify-center">
           <InstallButton />
         </div>
-
-        <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
-          {SHOP.name} · {SHOP.owner}
-        </p>
       </div>
     </div>
   )

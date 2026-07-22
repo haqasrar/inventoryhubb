@@ -14,9 +14,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'logo.png', 'logo-mark.png', 'signature.png'],
       manifest: {
-        name: 'Umer Enterprises — Stock & Billing',
-        short_name: 'Umer Stock',
-        description: 'Stock, sales and billing for Umer Enterprises.',
+        // Named for the app, not for any one shop: the same installation now serves
+        // every shop that signs up, and each one sets its own name inside the app.
+        name: 'Stock & Billing',
+        short_name: 'Stock',
+        description: 'Stock, sales and billing for your shop.',
         start_url: '/',
         scope: '/',
         display: 'standalone',

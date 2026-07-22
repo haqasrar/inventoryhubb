@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { isConfigured } from './services/firebase'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/useAuth'
+import { ShopProvider } from './context/ShopContext'
+import { useShop } from './context/useShop'
 import { InventoryProvider } from './context/InventoryContext'
 import { useInventory } from './context/useInventory'
 import Layout from './components/Layout'
@@ -10,7 +12,9 @@ import Products from './pages/Products'
 import Sell from './pages/Sell'
 import Restock from './pages/Restock'
 import History from './pages/History'
+import ShopDetails from './pages/ShopDetails'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import SetupNeeded from './pages/SetupNeeded'
 
 function Splash({ children }) {
@@ -35,8 +39,37 @@ function Shop() {
         <Route path="sell" element={<Sell />} />
         <Route path="restock" element={<Restock />} />
         <Route path="history" element={<History />} />
+        <Route path="shop" element={<ShopDetails />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
+    </Routes>
+  )
+}
+
+/**
+ * A signed-in account with no shop document is a brand new owner who has not filled
+ * in their details yet. There is nothing to keep books for until they do, so the
+ * setup form stands in front of the whole app rather than being a page inside it.
+ */
+function ShopGate() {
+  const { shop, loading, loadError } = useShop()
+
+  if (loading) return <Splash>Loading your shop…</Splash>
+  if (loadError) return <Splash>{loadError}</Splash>
+  if (!shop) return <ShopDetails />
+
+  return (
+    <InventoryProvider>
+      <Shop />
+    </InventoryProvider>
+  )
+}
+
+function SignedOut() {
+  return (
+    <Routes>
+      <Route path="/signup" element={<Signup />} />
+      <Route path="*" element={<Login />} />
     </Routes>
   )
 }
@@ -45,12 +78,12 @@ function Gate() {
   const { user, checking } = useAuth()
 
   if (checking) return <Splash>Checking your login…</Splash>
-  if (!user) return <Login />
+  if (!user) return <SignedOut />
 
   return (
-    <InventoryProvider>
-      <Shop />
-    </InventoryProvider>
+    <ShopProvider>
+      <ShopGate />
+    </ShopProvider>
   )
 }
 
