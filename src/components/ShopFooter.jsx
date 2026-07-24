@@ -1,5 +1,6 @@
 import { useShop } from '../context/useShop'
 import InstallButton from './InstallButton'
+import AppCredit from './AppCredit'
 
 /** Shop identity at the foot of every page. Hidden when a bill is being printed. */
 export default function ShopFooter() {
@@ -37,6 +38,10 @@ export default function ShopFooter() {
           {shop.address && <p>{shop.address}</p>}
         </div>
       </div>
+
+      {/* Kept clearly apart from the shop's own details above — this is about the app,
+          not about the shop. */}
+      <AppCredit className="mt-6 border-t border-slate-100 pt-4" />
     </footer>
   )
 }

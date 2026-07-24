@@ -40,6 +40,16 @@ export const BLANK_SHOP = {
   signature: '',
 }
 
+/**
+ * The app itself, as opposed to any shop using it. Shown in the footer of every
+ * screen — never on a printed bill, which carries the shop's own name alone.
+ */
+export const APP = {
+  name: 'InventoryHub',
+  developer: 'Mohammad Asrar',
+  contactEmail: 'haqasrar264@gmail.com',
+}
+
 /** Used when an owner leaves the bill prefix blank. */
 export const DEFAULT_BILL_PREFIX = 'INV'
 

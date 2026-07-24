@@ -4,6 +4,7 @@ import { UserPlus } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { USERNAME_RULES } from '../config/shop'
 import Field, { inputClass } from '../components/Field'
+import AppCredit from '../components/AppCredit'
 
 /**
  * Opens an account for a new shop. Only the login is created here — the shop's own
@@ -124,6 +125,8 @@ export default function Signup() {
             Sign in
           </Link>
         </p>
+
+        <AppCredit className="mt-8" />
       </div>
     </div>
   )

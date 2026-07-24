@@ -40,6 +40,46 @@ it, **Selling value** is what it will fetch on the shop floor. The gap between t
 sitting on your shelves. **Stock by type** splits both of those across the types you set up, so you
 can see which part of the shop your money is tied up in.
 
+## Barcode scanning
+
+Each product can carry an optional **barcode**. Add or edit a product and either type the number
+or press **Scan** to read it off the item with the phone camera. Barcodes are optional — items
+without one (most furniture) are still added and found by tapping or searching, exactly as before.
+
+Once products have barcodes:
+
+- **Sell** has a **Scan** button that opens the camera and stays on, so you can scan item after
+  item at the counter — each one drops into the bill. A short beep confirms a match; a lower buzz
+  means that code is on no product.
+- **Restock** has a **Scan** button that finds the delivered product and selects it.
+
+Two products can never share a barcode — the add/edit form blocks it, so a scan at the till is
+never ambiguous. Every scanner also has a **type-the-number** box as a fallback, for a scratched
+label or a browser without camera support.
+
+**Scan to add or restock.** The Dashboard and the Products page both have a **Scan to add or
+restock** button, and the Dashboard also has **Scan to sell** (which jumps to the till with the
+camera already on). When you scan to add-or-restock, the app decides for you: a barcode already in
+stock opens **Add stock** (quantity, and new prices if the supplier's changed); a barcode it has
+never seen opens **Add product** with the code filled in. It returns to the camera after each one,
+so a whole delivery can be checked in item by item. While adding,
+if the item does not fit any existing type, press **New type**, name it (e.g. "Iron Items"), and on
+save the type is created on the shop and the product is filed under it. Typing a type that already
+exists (in any capitalisation) reuses it rather than making a duplicate.
+
+**Reading the category from the barcode is not possible** on its own — a barcode is only an ID
+number, it carries no category. Turning one into a name and type needs an online product database,
+and (a) browsers cannot call those directly (CORS), and (b) they barely cover Indian furniture,
+iron and local goods. So that lookup is built but **off by default**. To switch it on, deploy the
+included `netlify/functions/barcode-lookup` proxy and set `VITE_BARCODE_LOOKUP=on`; it will then
+pre-fill the name and type for the occasional barcoded item it recognises, and fall back to
+by-hand entry for everything else.
+
+Scanning uses the phone's built-in barcode reader where it exists (the Android phones this shop
+uses) and quietly downloads a fallback reader only on browsers that lack it, so the app stays fast
+to load. The camera needs the site opened over HTTPS (the Netlify link is) and a one-time
+permission tap.
+
 ## Bills
 
 Selling works like a counter: tap each product the customer is buying to add it to the bill,

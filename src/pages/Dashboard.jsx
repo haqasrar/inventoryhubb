@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Package,
   IndianRupee,
@@ -9,6 +9,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Plus,
+  ScanLine,
+  ShoppingCart,
 } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
 import { useShop } from '../context/useShop'
@@ -19,10 +21,13 @@ import StatCard from '../components/StatCard'
 import StockBadge from '../components/StockBadge'
 import EmptyState from '../components/EmptyState'
 import ShopBanner from '../components/ShopBanner'
+import ScanToStock from '../components/ScanToStock'
 
 export default function Dashboard() {
   const { products, transactions } = useInventory()
   const { shop } = useShop()
+  const navigate = useNavigate()
+  const [scanning, setScanning] = useState(false)
 
   /**
    * What the shop is holding, split by the types the owner set up. Types with nothing
@@ -83,6 +88,24 @@ export default function Dashboard() {
   return (
     <>
       <ShopBanner />
+
+      {/* Big scan targets — the two things done most at the counter. */}
+      <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        <button
+          onClick={() => navigate('/sell?scan=1')}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          <ShoppingCart size={20} />
+          Scan to sell
+        </button>
+        <button
+          onClick={() => setScanning(true)}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+        >
+          <ScanLine size={20} />
+          Scan to add or restock
+        </button>
+      </div>
 
       <PageHeader
         title="Dashboard"
@@ -258,6 +281,8 @@ export default function Dashboard() {
           )}
         </section>
       </div>
+
+      {scanning && <ScanToStock onClose={() => setScanning(false)} />}
     </>
   )
 }

@@ -10,6 +10,14 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == shopId;
     }
 
+    // An owner closing their account sets `deleting` on their shop first, and only
+    // then may the records below be removed. That keeps both promises at once: a
+    // single inconvenient sale can never be quietly deleted while the shop is
+    // trading, but an owner who wants out really can take everything with them.
+    function closing(shopId) {
+      return get(/databases/$(database)/documents/shops/$(shopId)).data.deleting == true;
+    }
+
     match /shops/{shopId} {
       allow read: if owns(shopId);
 
@@ -19,21 +27,22 @@ service cloud.firestore {
       // Details can be edited freely, but ownership cannot be handed to someone else.
       allow update: if owns(shopId) && request.resource.data.ownerUid == resource.data.ownerUid;
 
-      // Deleting the shop would orphan its stock and history below it. Done from the
-      // console if it is ever really wanted.
-      allow delete: if false;
+      // The shop document goes last, once everything beneath it is gone — deleting it
+      // first would strand the rest, because `closing()` reads it.
+      allow delete: if owns(shopId) && resource.data.deleting == true;
 
       // Stock. The owner of this shop, and nobody else.
       match /products/{productId} {
         allow read, write: if owns(shopId);
       }
 
-      // Sales and deliveries are an audit trail: they may be created and read,
-      // but never edited or deleted. History must stay trustworthy — it is the
-      // record of where the stock went and who owes money.
+      // Sales and deliveries are an audit trail: they may be created and read, but
+      // never edited, and only deleted as part of closing the account. History must
+      // stay trustworthy — it is the record of where stock went and who owes money.
       match /transactions/{transactionId} {
         allow read, create: if owns(shopId);
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if owns(shopId) && closing(shopId);
       }
 
       // Bill number counter. Only ever incremented inside a transaction.

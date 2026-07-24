@@ -4,6 +4,7 @@ import { LogIn } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import Field, { inputClass } from '../components/Field'
 import InstallButton from '../components/InstallButton'
+import AppCredit from '../components/AppCredit'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -91,6 +92,8 @@ export default function Login() {
         <div className="mt-5 flex justify-center">
           <InstallButton />
         </div>
+
+        <AppCredit className="mt-8" />
       </div>
     </div>
   )

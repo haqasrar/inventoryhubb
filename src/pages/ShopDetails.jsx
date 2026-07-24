@@ -4,6 +4,7 @@ import { useShop } from '../context/useShop'
 import { useAuth } from '../context/useAuth'
 import { BLANK_SHOP, DEFAULT_BILL_PREFIX, DEFAULT_CATEGORIES } from '../config/shop'
 import Field, { inputClass } from '../components/Field'
+import AppCredit from '../components/AppCredit'
 import CategoryEditor from '../components/CategoryEditor'
 import ImageUpload from '../components/ImageUpload'
 import PageHeader from '../components/PageHeader'
@@ -236,6 +237,9 @@ export default function ShopDetails() {
           >
             Sign out
           </button>
+
+          {/* This screen stands outside the normal layout, so it needs its own copy. */}
+          <AppCredit className="mt-8" />
         </div>
       </div>
     )

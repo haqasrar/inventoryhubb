@@ -76,6 +76,7 @@ export function createInventoryApi(shop) {
     const product = {
       name: data.name.trim(),
       category: data.category,
+      barcode: (data.barcode ?? '').trim(),
       costPrice: Number(data.costPrice),
       sellPrice: Number(data.sellPrice),
       quantity: Number(data.quantity),
@@ -95,6 +96,7 @@ export function createInventoryApi(shop) {
     for (const key of ['costPrice', 'sellPrice', 'quantity', 'lowStockThreshold']) {
       if (key in clean) clean[key] = Number(clean[key])
     }
+    if ('barcode' in clean) clean.barcode = (clean.barcode ?? '').trim()
 
     await updateDoc(productRef(id), clean)
     return { id, ...clean }

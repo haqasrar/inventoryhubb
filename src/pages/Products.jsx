@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Plus, Package, SearchX } from 'lucide-react'
+import { Plus, Package, SearchX, ScanLine } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
 import { stockStatus } from '../utils/format'
 import PageHeader from '../components/PageHeader'
 import SearchFilterBar from '../components/SearchFilterBar'
 import ProductTable from '../components/ProductTable'
 import ProductForm from '../components/ProductForm'
+import ScanToStock from '../components/ScanToStock'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyState from '../components/EmptyState'
 
@@ -17,6 +18,7 @@ export default function Products() {
   const [status, setStatus] = useState('all')
   const [editing, setEditing] = useState(null) // product object, or 'new'
   const [deleting, setDeleting] = useState(null)
+  const [scanning, setScanning] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -36,13 +38,22 @@ export default function Products() {
         title="Products"
         subtitle={`${products.length} product${products.length === 1 ? '' : 's'} in the shop`}
         action={
-          <button
-            onClick={() => setEditing('new')}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-          >
-            <Plus size={18} />
-            Add product
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setScanning(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100"
+            >
+              <ScanLine size={18} />
+              Scan
+            </button>
+            <button
+              onClick={() => setEditing('new')}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+            >
+              <Plus size={18} />
+              Add product
+            </button>
+          </div>
         }
       />
 
@@ -80,6 +91,8 @@ export default function Products() {
           Showing {filtered.length} of {products.length} products
         </p>
       )}
+
+      {scanning && <ScanToStock onClose={() => setScanning(false)} />}
 
       {editing && (
         <ProductForm

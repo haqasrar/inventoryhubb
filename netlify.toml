@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+# Optional barcode-lookup proxy (off unless VITE_BARCODE_LOOKUP=on). Netlify serves
+# it at /.netlify/functions/barcode-lookup, ahead of the SPA redirect below.
+[functions]
+  directory = "netlify/functions"
+
 # React Router handles the routes in the browser, so every path must be served
 # index.html. Without this, opening /sell directly or refreshing on it returns
 # a Netlify 404 instead of the app.

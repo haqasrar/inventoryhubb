@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { ScanLine, X, Plus } from 'lucide-react'
 import Modal from './Modal'
 import Field, { inputClass } from './Field'
+import BarcodeScanner from './BarcodeScanner'
 import { formatINR } from '../utils/format'
+import { findByBarcode } from '../utils/barcode'
+import { beepSuccess } from '../utils/feedback'
+import { lookupBarcode } from '../services/barcodeLookup'
+import { CATEGORY_RULES } from '../config/shop'
 import { useShop } from '../context/useShop'
+import { useInventory } from '../context/useInventory'
 
 const BLANK = {
   name: '',
+  barcode: '',
   costPrice: '',
   sellPrice: '',
   quantity: '',
@@ -15,6 +23,9 @@ const BLANK = {
 function validate(values) {
   const errors = {}
   if (!values.name.trim()) errors.name = 'Give the product a name.'
+  if (!values.category || !values.category.trim()) {
+    errors.category = 'Choose or add a product type.'
+  }
 
   for (const [key, label] of [
     ['costPrice', 'Cost price'],
@@ -31,14 +42,62 @@ function validate(values) {
   return errors
 }
 
-export default function ProductForm({ product, onSubmit, onClose }) {
-  const { shop } = useShop()
+export default function ProductForm({ product, presetBarcode = '', onSubmit, onClose }) {
+  const { shop, saveShop } = useShop()
+  const { products } = useInventory()
 
   const [values, setValues] = useState(
-    product ? { ...product } : { ...BLANK, category: shop.categories[0] },
+    product
+      ? { ...BLANK, ...product }
+      : { ...BLANK, category: shop.categories[0], barcode: presetBarcode },
   )
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  // True while typing a brand-new type rather than picking an existing one.
+  const [addingType, setAddingType] = useState(false)
+
+  // Warn if this barcode is already on a different product — two products sharing a
+  // code would make scanning at the till ambiguous.
+  const clash = values.barcode.trim() ? findByBarcode(products, values.barcode) : null
+  const duplicate = clash && clash.id !== product?.id ? clash : null
+
+  const existingType = (name) =>
+    shop.categories.find((c) => c.toLowerCase() === String(name).trim().toLowerCase())
+
+  /**
+   * Best-effort: turn a barcode into a name and type. Disabled unless the online
+   * lookup is switched on, so normally this returns nothing and the owner fills the
+   * form in — the reliable path. When it does return a type the shop has never used,
+   * it is dropped straight into the new-type box so the product lands in a new type.
+   */
+  const runLookup = useCallback(
+    async (code) => {
+      const hit = await lookupBarcode(code)
+      if (!hit) return
+      setValues((v) => ({
+        ...v,
+        name: v.name.trim() ? v.name : hit.name,
+        category: hit.category ? (existingType(hit.category) ?? hit.category) : v.category,
+      }))
+      if (hit.category && !existingType(hit.category)) setAddingType(true)
+    },
+    // existingType closes over shop.categories, which does not change inside the modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
+  // A product opened straight from a scan of an unknown barcode: try to fill it in.
+  useEffect(() => {
+    if (!product && presetBarcode) runLookup(presetBarcode)
+  }, [product, presetBarcode, runLookup])
+
+  function handleScanned(code) {
+    setValues((v) => ({ ...v, barcode: code }))
+    setScanning(false)
+    beepSuccess()
+    runLookup(code)
+  }
 
   // A product keeps whatever it was filed under, even if the owner has since removed
   // that type — editing its price must not silently re-file it under something else.
@@ -56,11 +115,28 @@ export default function ProductForm({ product, onSubmit, onClose }) {
     const found = validate(values)
     setErrors(found)
     if (Object.keys(found).length > 0) return
+    if (duplicate) return // the field already shows why
+
+    const typed = values.category.trim()
+    const known = existingType(typed)
+
+    // A type the shop has never used is added to its list, so the product has somewhere
+    // to be filed and the new type shows up in the filters from now on.
+    if (!known && shop.categories.length >= CATEGORY_RULES.max) {
+      setErrors({
+        category: `You already have ${CATEGORY_RULES.max} types, the most allowed. Remove one under Shop details first.`,
+      })
+      return
+    }
 
     setSaving(true)
     try {
-      await onSubmit(values)
+      if (!known) await saveShop({ ...shop, categories: [...shop.categories, typed] })
+      // Keep the owner's existing spelling when the type already exists.
+      await onSubmit({ ...values, category: known ?? typed })
       onClose()
+    } catch (err) {
+      setErrors({ category: err?.message || 'Could not save. Try again.' })
     } finally {
       setSaving(false)
     }
@@ -68,6 +144,13 @@ export default function ProductForm({ product, onSubmit, onClose }) {
 
   return (
     <Modal title={product ? 'Edit product' : 'Add product'} onClose={onClose}>
+      {scanning && (
+        <BarcodeScanner
+          title="Scan the product barcode"
+          onScan={handleScanned}
+          onClose={() => setScanning(false)}
+        />
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Product name" error={errors.name}>
           <input
@@ -79,22 +162,99 @@ export default function ProductForm({ product, onSubmit, onClose }) {
           />
         </Field>
 
-        <Field label="Type">
-          <div className="grid grid-cols-2 gap-2">
-            {choices.map((c) => (
+        <Field label="Type" error={errors.category}>
+          {addingType ? (
+            <>
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  value={values.category}
+                  onChange={set('category')}
+                  maxLength={CATEGORY_RULES.maxLength}
+                  placeholder="e.g. Iron Items"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingType(false)
+                    setValues((v) => ({ ...v, category: shop.categories[0] }))
+                  }}
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Added to your product types when you save.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {choices.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setValues((v) => ({ ...v, category: c }))}
+                    className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+                      values.category === c
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
               <button
-                key={c}
                 type="button"
-                onClick={() => setValues((v) => ({ ...v, category: c }))}
-                className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
-                  values.category === c
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-                }`}
+                onClick={() => {
+                  setAddingType(true)
+                  setValues((v) => ({ ...v, category: '' }))
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 transition hover:underline"
               >
-                {c}
+                <Plus size={15} />
+                New type
               </button>
-            ))}
+            </>
+          )}
+        </Field>
+
+        <Field
+          label="Barcode"
+          hint="Optional — scan or type it so this product can be found by scanning later."
+          error={duplicate ? `Already used by "${duplicate.name}".` : undefined}
+        >
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                value={values.barcode}
+                onChange={set('barcode')}
+                inputMode="numeric"
+                placeholder="No barcode"
+                className={`${inputClass} ${values.barcode ? 'pr-9' : ''}`}
+              />
+              {values.barcode && (
+                <button
+                  type="button"
+                  onClick={() => setValues((v) => ({ ...v, barcode: '' }))}
+                  aria-label="Clear barcode"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100"
+            >
+              <ScanLine size={16} />
+              Scan
+            </button>
           </div>
         </Field>
 
@@ -166,7 +326,7 @@ export default function ProductForm({ product, onSubmit, onClose }) {
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || Boolean(duplicate)}
             className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
           >
             {saving ? 'Saving…' : product ? 'Save changes' : 'Add product'}

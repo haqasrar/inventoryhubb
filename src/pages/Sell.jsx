@@ -1,11 +1,15 @@
-import { useState } from 'react'
-import { Package, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Package, Plus, Minus, Trash2, ShoppingCart, ScanLine } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
 import { formatINR } from '../utils/format'
+import { findByBarcode } from '../utils/barcode'
+import { beepSuccess, beepError } from '../utils/feedback'
 import { PAYMENT_OPTIONS } from '../utils/payment'
 import PageHeader from '../components/PageHeader'
 import Field, { inputClass } from '../components/Field'
 import ProductPicker from '../components/ProductPicker'
+import BarcodeScanner from '../components/BarcodeScanner'
 import EmptyState from '../components/EmptyState'
 import Bill from '../components/Bill'
 
@@ -19,6 +23,16 @@ export default function Sell() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [bill, setBill] = useState(null)
+  const [scanning, setScanning] = useState(false)
+
+  // Arriving from the dashboard's "Scan to sell" opens the camera straight away.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('scan') === '1') {
+      setScanning(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const onCredit = payment === 'credit'
 
@@ -30,29 +44,50 @@ export default function Sell() {
 
   /**
    * Adding a product already in the cart bumps its quantity instead of duplicating it.
-   * The stock check happens out here, not inside the state updater: an updater must be
-   * pure, and showing a toast from within one sets state during render.
+   * Returns whether it actually added, so the scanner can beep success or failure.
+   *
+   * The stock checks happen out here, not inside the state updater: an updater must be
+   * pure, and showing a toast from within one sets state during render. The out-of-stock
+   * guard matters for scanning, which reaches this without the picker's disabled rows.
    */
   function addToCart(productId) {
     setError('')
 
     const product = products.find((p) => p.id === productId)
-    if (!product) return
+    if (!product) return false
+
+    if (product.quantity <= 0) {
+      showToast(`${product.name} is out of stock.`, 'error')
+      return false
+    }
 
     const existing = cart.find((l) => l.productId === productId)
     if (!existing) {
       setCart((current) => [...current, { productId, quantity: 1 }])
-      return
+      return true
     }
 
     if (existing.quantity >= product.quantity) {
       showToast(`Only ${product.quantity} of ${product.name} in stock.`, 'error')
-      return
+      return false
     }
 
     setCart((current) =>
       current.map((l) => (l.productId === productId ? { ...l, quantity: l.quantity + 1 } : l)),
     )
+    return true
+  }
+
+  /** Continuous scanning at the till: each read adds the matching product to the bill. */
+  function handleScan(code) {
+    const product = findByBarcode(products, code)
+    if (!product) {
+      beepError()
+      showToast(`No product found for barcode ${code}.`, 'error')
+      return
+    }
+    if (addToCart(product.id)) beepSuccess()
+    else beepError()
   }
 
   function setQuantity(productId, quantity) {
@@ -116,7 +151,18 @@ export default function Sell() {
       <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <Field label="Tap a product to add it to the bill">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-slate-700">Add products to the bill</p>
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+              >
+                <ScanLine size={16} />
+                Scan
+              </button>
+            </div>
+            <Field label="Or tap a product">
               <ProductPicker
                 products={products}
                 selectedIds={cart.map((l) => l.productId)}
@@ -286,6 +332,15 @@ export default function Sell() {
           </div>
         </div>
       </form>
+
+      {scanning && (
+        <BarcodeScanner
+          title="Scan items to sell"
+          continuous
+          onScan={handleScan}
+          onClose={() => setScanning(false)}
+        />
+      )}
 
       {bill && <Bill bill={bill} onClose={() => setBill(null)} />}
     </>

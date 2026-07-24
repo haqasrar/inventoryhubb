@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, ArrowRight } from 'lucide-react'
+import { Package, ArrowRight, ScanLine } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
 import Field, { inputClass } from './Field'
 import ProductPicker from './ProductPicker'
+import BarcodeScanner from './BarcodeScanner'
 import EmptyState from './EmptyState'
 import { formatINR } from '../utils/format'
+import { findByBarcode } from '../utils/barcode'
+import { beepSuccess, beepError } from '../utils/feedback'
 
 /**
  * Stock arriving from a supplier order. One product at a time — unlike a customer sale,
@@ -21,8 +24,29 @@ export default function RestockForm() {
   const [newSellPrice, setNewSellPrice] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [scanning, setScanning] = useState(false)
 
   const product = products.find((p) => p.id === productId) ?? null
+
+  function selectProduct(id) {
+    setProductId(id)
+    setError('')
+    setNewCostPrice('')
+    setNewSellPrice('')
+  }
+
+  /** A delivery is one product at a time, so scanning closes after a match. */
+  function handleScan(code) {
+    const found = findByBarcode(products, code)
+    if (!found) {
+      beepError()
+      setError(`No product found for barcode ${code}.`)
+      return
+    }
+    beepSuccess()
+    selectProduct(found.id)
+    setScanning(false)
+  }
   const qty = Number(quantity)
   const validQty = Number.isFinite(qty) && qty > 0
 
@@ -70,19 +94,28 @@ export default function RestockForm() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-5">
+      {scanning && (
+        <BarcodeScanner
+          title="Scan the delivered product"
+          onScan={handleScan}
+          onClose={() => setScanning(false)}
+        />
+      )}
       <div className="lg:col-span-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <Field label="Which product arrived?">
-            <ProductPicker
-              products={products}
-              selectedId={productId}
-              onSelect={(id) => {
-                setProductId(id)
-                setError('')
-                setNewCostPrice('')
-                setNewSellPrice('')
-              }}
-            />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-slate-700">Which product arrived?</p>
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+            >
+              <ScanLine size={16} />
+              Scan
+            </button>
+          </div>
+          <Field label="Or tap a product">
+            <ProductPicker products={products} selectedId={productId} onSelect={selectProduct} />
           </Field>
         </div>
       </div>
