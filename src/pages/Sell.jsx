@@ -78,14 +78,15 @@ export default function Sell() {
     return true
   }
 
-  // Holding a barcode in view fires the camera repeatedly; ignore the same code for a
-  // moment so one item is not read over and over.
+  // A held barcode fires the camera repeatedly; ignore the same code for a moment so a
+  // bad or out-of-stock scan does not beep over and over while the camera is still up.
   const lastScanRef = useRef({ code: '', at: 0 })
 
   /**
-   * A scan puts the product on the bill ONCE, at quantity 1. It never bumps the
-   * quantity — the owner sets how many to sell with the +/- controls afterwards.
-   * Scanning an item that is already on the bill just says so.
+   * One scan, then back to the bill. A found product is put on the bill at quantity 1
+   * and the camera closes, so the owner types how many to sell with the item in front
+   * of them — rather than the camera piling up quantity while the item is held in view.
+   * A bad or out-of-stock scan keeps the camera open to try again.
    */
   function handleScan(code) {
     const now = Date.now()
@@ -103,15 +104,19 @@ export default function Sell() {
       showToast(`${product.name} is out of stock.`, 'error')
       return
     }
-    if (cart.some((l) => l.productId === product.id)) {
-      beepSuccess()
-      showToast(`${product.name} is already on the bill — set the quantity below.`)
-      return
-    }
 
-    setError('')
-    setCart((current) => [...current, { productId: product.id, quantity: 1 }])
+    const alreadyOnBill = cart.some((l) => l.productId === product.id)
+    if (!alreadyOnBill) {
+      setError('')
+      setCart((current) => [...current, { productId: product.id, quantity: 1 }])
+    }
     beepSuccess()
+    showToast(
+      alreadyOnBill
+        ? `${product.name} is already on the bill — set the quantity.`
+        : `${product.name} added — set the quantity to sell.`,
+    )
+    setScanning(false) // back to the bill to set the quantity by hand
   }
 
   function setQuantity(productId, quantity) {
@@ -359,8 +364,7 @@ export default function Sell() {
 
       {scanning && (
         <BarcodeScanner
-          title="Scan items to sell"
-          continuous
+          title="Scan a product to sell"
           onScan={handleScan}
           onClose={() => setScanning(false)}
         />
