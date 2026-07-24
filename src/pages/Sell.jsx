@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Package, Plus, Minus, Trash2, ShoppingCart, ScanLine } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
@@ -78,16 +78,40 @@ export default function Sell() {
     return true
   }
 
-  /** Continuous scanning at the till: each read adds the matching product to the bill. */
+  // Holding a barcode in view fires the camera repeatedly; ignore the same code for a
+  // moment so one item is not read over and over.
+  const lastScanRef = useRef({ code: '', at: 0 })
+
+  /**
+   * A scan puts the product on the bill ONCE, at quantity 1. It never bumps the
+   * quantity — the owner sets how many to sell with the +/- controls afterwards.
+   * Scanning an item that is already on the bill just says so.
+   */
   function handleScan(code) {
+    const now = Date.now()
+    if (code === lastScanRef.current.code && now - lastScanRef.current.at < 2000) return
+    lastScanRef.current = { code, at: now }
+
     const product = findByBarcode(products, code)
     if (!product) {
       beepError()
       showToast(`No product found for barcode ${code}.`, 'error')
       return
     }
-    if (addToCart(product.id)) beepSuccess()
-    else beepError()
+    if (product.quantity <= 0) {
+      beepError()
+      showToast(`${product.name} is out of stock.`, 'error')
+      return
+    }
+    if (cart.some((l) => l.productId === product.id)) {
+      beepSuccess()
+      showToast(`${product.name} is already on the bill — set the quantity below.`)
+      return
+    }
+
+    setError('')
+    setCart((current) => [...current, { productId: product.id, quantity: 1 }])
+    beepSuccess()
   }
 
   function setQuantity(productId, quantity) {

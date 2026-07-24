@@ -12,6 +12,9 @@ export default defineConfig({
       // A new deploy replaces the cached app on the next open, so the shop never
       // has to reinstall anything to get a fix.
       registerType: 'autoUpdate',
+      // We register the service worker ourselves in main.jsx so we can also check
+      // for updates while the app is open — not just once at page load.
+      injectRegister: false,
       // logo.png and signature.png are the first shop's own artwork, still pointed at
       // by its shop document; the app-* files are InventoryHub's own branding.
       includeAssets: [

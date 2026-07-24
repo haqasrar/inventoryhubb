@@ -57,10 +57,12 @@ export default function ProductForm({ product, presetBarcode = '', onSubmit, onC
   // True while typing a brand-new type rather than picking an existing one.
   const [addingType, setAddingType] = useState(false)
 
-  // Warn if this barcode is already on a different product — two products sharing a
-  // code would make scanning at the till ambiguous.
+  // If this barcode is already on a different product, say so — but do not block
+  // saving. Cheap and local goods often share a printed barcode or have none, so the
+  // owner has to be able to add the product anyway. Suppressed while saving so the
+  // product does not appear to clash with itself once the live list updates.
   const clash = values.barcode.trim() ? findByBarcode(products, values.barcode) : null
-  const duplicate = clash && clash.id !== product?.id ? clash : null
+  const duplicate = !saving && clash && clash.id !== product?.id ? clash : null
 
   const existingType = (name) =>
     shop.categories.find((c) => c.toLowerCase() === String(name).trim().toLowerCase())
@@ -115,7 +117,6 @@ export default function ProductForm({ product, presetBarcode = '', onSubmit, onC
     const found = validate(values)
     setErrors(found)
     if (Object.keys(found).length > 0) return
-    if (duplicate) return // the field already shows why
 
     const typed = values.category.trim()
     const known = existingType(typed)
@@ -225,7 +226,6 @@ export default function ProductForm({ product, presetBarcode = '', onSubmit, onC
         <Field
           label="Barcode"
           hint="Optional — scan or type it so this product can be found by scanning later."
-          error={duplicate ? `Already used by "${duplicate.name}".` : undefined}
         >
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -256,6 +256,12 @@ export default function ProductForm({ product, presetBarcode = '', onSubmit, onC
               Scan
             </button>
           </div>
+          {duplicate && (
+            <p className="mt-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              This barcode is also on “{duplicate.name}”. You can still save, but scanning it will
+              only find one of them — leave it blank if this is a different product.
+            </p>
+          )}
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -326,7 +332,7 @@ export default function ProductForm({ product, presetBarcode = '', onSubmit, onC
           </button>
           <button
             type="submit"
-            disabled={saving || Boolean(duplicate)}
+            disabled={saving}
             className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
           >
             {saving ? 'Saving…' : product ? 'Save changes' : 'Add product'}
