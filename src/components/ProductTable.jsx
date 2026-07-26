@@ -1,8 +1,25 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, ScanLine } from 'lucide-react'
 import StockBadge from './StockBadge'
 import { formatINR } from '../utils/format'
 
-export default function ProductTable({ products, onEdit, onDelete }) {
+/** Scan/attach-barcode button, tinted when the product still has no barcode. */
+function BarcodeButton({ product, onScanBarcode }) {
+  const has = Boolean((product.barcode || '').trim())
+  return (
+    <button
+      onClick={() => onScanBarcode(product)}
+      aria-label={has ? `Change barcode for ${product.name}` : `Add barcode to ${product.name}`}
+      title={has ? `Barcode: ${product.barcode}` : 'No barcode — tap to scan or type one'}
+      className={`rounded-lg p-2 transition hover:bg-slate-100 ${
+        has ? 'text-slate-400 hover:text-slate-700' : 'text-indigo-500 hover:text-indigo-700'
+      }`}
+    >
+      <ScanLine size={16} />
+    </button>
+  )
+}
+
+export default function ProductTable({ products, onEdit, onDelete, onScanBarcode }) {
   return (
     <>
       {/* Desktop table */}
@@ -33,6 +50,7 @@ export default function ProductTable({ products, onEdit, onDelete }) {
               </td>
               <td className="px-5 py-4">
                 <div className="flex justify-end gap-1">
+                  <BarcodeButton product={p} onScanBarcode={onScanBarcode} />
                   <button
                     onClick={() => onEdit(p)}
                     aria-label={`Edit ${p.name}`}
@@ -71,6 +89,7 @@ export default function ProductTable({ products, onEdit, onDelete }) {
                 <span className="ml-2 text-slate-400">cost {formatINR(p.costPrice)}</span>
               </div>
               <div className="flex gap-1">
+                <BarcodeButton product={p} onScanBarcode={onScanBarcode} />
                 <button
                   onClick={() => onEdit(p)}
                   aria-label={`Edit ${p.name}`}

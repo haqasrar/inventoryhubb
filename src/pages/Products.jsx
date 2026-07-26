@@ -2,16 +2,19 @@ import { useMemo, useState } from 'react'
 import { Plus, Package, SearchX, ScanLine } from 'lucide-react'
 import { useInventory } from '../context/useInventory'
 import { stockStatus } from '../utils/format'
+import { findByBarcode } from '../utils/barcode'
+import { beepSuccess, beepError } from '../utils/feedback'
 import PageHeader from '../components/PageHeader'
 import SearchFilterBar from '../components/SearchFilterBar'
 import ProductTable from '../components/ProductTable'
 import ProductForm from '../components/ProductForm'
 import ScanToStock from '../components/ScanToStock'
+import BarcodeScanner from '../components/BarcodeScanner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyState from '../components/EmptyState'
 
 export default function Products() {
-  const { products, addProduct, updateProduct, deleteProduct } = useInventory()
+  const { products, addProduct, updateProduct, deleteProduct, showToast } = useInventory()
 
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
@@ -19,6 +22,26 @@ export default function Products() {
   const [editing, setEditing] = useState(null) // product object, or 'new'
   const [deleting, setDeleting] = useState(null)
   const [scanning, setScanning] = useState(false)
+  const [attachTo, setAttachTo] = useState(null) // product getting a barcode later
+
+  /**
+   * Scan or type a barcode onto a product that was entered without one. Attaching it
+   * to the existing product (rather than the scan-to-add flow) is what stops a second,
+   * duplicate product being created for something already on the shelf.
+   */
+  async function handleAttachBarcode(code) {
+    const owner = findByBarcode(products, code)
+    if (owner && owner.id !== attachTo.id) {
+      beepError()
+      showToast(`That barcode is already on "${owner.name}".`, 'error')
+      return // keep the scanner open to try another
+    }
+    beepSuccess()
+    const target = attachTo
+    setAttachTo(null)
+    await updateProduct(target.id, { barcode: code })
+    showToast(`Barcode saved for ${target.name}.`)
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -82,7 +105,12 @@ export default function Products() {
             description="Try a different search, or clear the filters."
           />
         ) : (
-          <ProductTable products={filtered} onEdit={setEditing} onDelete={setDeleting} />
+          <ProductTable
+            products={filtered}
+            onEdit={setEditing}
+            onDelete={setDeleting}
+            onScanBarcode={setAttachTo}
+          />
         )}
       </div>
 
@@ -93,6 +121,14 @@ export default function Products() {
       )}
 
       {scanning && <ScanToStock onClose={() => setScanning(false)} />}
+
+      {attachTo && (
+        <BarcodeScanner
+          title={`Barcode for ${attachTo.name}`}
+          onScan={handleAttachBarcode}
+          onClose={() => setAttachTo(null)}
+        />
+      )}
 
       {editing && (
         <ProductForm
