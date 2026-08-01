@@ -7,6 +7,7 @@ import {
   History as HistoryIcon,
   LogOut,
   Key,
+  Mail,
   Store,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -26,11 +27,14 @@ const NAV = [
 ]
 
 export default function Layout() {
-  const { signOut, changePassword } = useAuth()
+  const { user, signOut, changePassword, changeEmail } = useAuth()
   const { shop } = useShop()
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [cpError, setCpError] = useState('')
   const [cpBusy, setCpBusy] = useState(false)
+  const [showChangeEmail, setShowChangeEmail] = useState(false)
+  const [ceError, setCeError] = useState('')
+  const [ceBusy, setCeBusy] = useState(false)
 
   async function handleChangePassword(e) {
     e.preventDefault()
@@ -52,6 +56,25 @@ export default function Layout() {
       setCpError(err.message)
     } finally {
       setCpBusy(false)
+    }
+  }
+
+  async function handleChangeEmail(e) {
+    e.preventDefault()
+    setCeError('')
+    const form = e.target
+    const current = form.currentPassword.value
+    const newEmail = form.newEmail.value
+
+    setCeBusy(true)
+    try {
+      await changeEmail(current, newEmail)
+      setShowChangeEmail(false)
+      form.reset()
+    } catch (err) {
+      setCeError(err.message)
+    } finally {
+      setCeBusy(false)
     }
   }
 
@@ -107,6 +130,13 @@ export default function Layout() {
             <Store size={18} />
             Shop details
           </NavLink>
+          <button
+            onClick={() => setShowChangeEmail(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            <Mail size={18} />
+            Change email
+          </button>
           <button
             onClick={() => setShowChangePassword(true)}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
@@ -228,6 +258,61 @@ export default function Layout() {
                 className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
               >
                 {cpBusy ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showChangeEmail && (
+        <Modal title="Change email" onClose={() => { setShowChangeEmail(false); setCeError(''); }}>
+          <form onSubmit={handleChangeEmail} className="space-y-4">
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+              This is the address a password reset is sent to. Your username for signing
+              in does not change.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">New email</label>
+              <input
+                name="newEmail"
+                type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                required
+                defaultValue=""
+                placeholder={user?.email || 'you@example.com'}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Current password</label>
+              <input
+                name="currentPassword"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+            {ceError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{ceError}</p>
+            )}
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowChangeEmail(false); setCeError(''); }}
+                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={ceBusy}
+                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {ceBusy ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>

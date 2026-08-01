@@ -15,6 +15,7 @@ import History from './pages/History'
 import ShopDetails from './pages/ShopDetails'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotAccount from './pages/ForgotAccount'
 import SetupNeeded from './pages/SetupNeeded'
 
 function Splash({ children }) {
@@ -69,6 +70,7 @@ function SignedOut() {
   return (
     <Routes>
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot" element={<ForgotAccount />} />
       <Route path="*" element={<Login />} />
     </Routes>
   )

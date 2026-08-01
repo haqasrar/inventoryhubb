@@ -90,23 +90,71 @@ export default function ShopDetails() {
         />
       </Field>
 
-      <Field label="GST number" hint="Required. 15 letters and numbers, printed on every bill.">
+      <Field
+        label="Business number"
+        hint={
+          form.taxType === 'gst'
+            ? 'Optional. Your 15-character GST number, printed on every bill.'
+            : 'Optional. Any other registration number — printed on every bill under the name you give it.'
+        }
+      >
+        {/* GST is what most shops here have, but a shop with some other registration
+            number can pick "Other" and name it themselves. */}
+        <div className="mb-2 flex gap-2">
+          {[
+            { key: 'gst', label: 'GST' },
+            { key: 'other', label: 'Other' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setForm((prev) => ({ ...prev, taxType: key }))
+                setSaved(false)
+              }}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                form.taxType === key
+                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {form.taxType === 'other' && (
+          <input
+            type="text"
+            value={form.taxLabel}
+            onChange={set('taxLabel')}
+            placeholder="Name of the number, e.g. License No."
+            maxLength={24}
+            className={`${inputClass} mb-2`}
+          />
+        )}
+
         <input
           type="text"
           value={form.gstin}
-          // Uppercased as it is typed: a GST number is never lowercase, and seeing it
-          // the way it will print catches a mistyped one on the spot.
+          // A GST number is uppercased as it is typed — it is never lowercase, and
+          // seeing it the way it will print catches a mistyped one on the spot. Other
+          // numbers are left exactly as entered.
           onChange={(e) => {
-            setForm((prev) => ({ ...prev, gstin: e.target.value.toUpperCase() }))
+            const raw = e.target.value
+            setForm((prev) => ({
+              ...prev,
+              gstin: prev.taxType === 'gst' ? raw.toUpperCase() : raw,
+            }))
             setSaved(false)
           }}
-          autoCapitalize="characters"
+          autoCapitalize={form.taxType === 'gst' ? 'characters' : 'off'}
           autoCorrect="off"
           spellCheck="false"
-          // Not 15: a number pasted with spaces in it must fit, since the spaces are
-          // only stripped when it is saved.
-          maxLength={20}
-          placeholder="01ABCDE1234F1Z5"
+          // For GST, not 15: a number pasted with spaces in it must fit, since the
+          // spaces are only stripped when it is saved.
+          maxLength={form.taxType === 'gst' ? 20 : 40}
+          placeholder={form.taxType === 'gst' ? '01AXXXXXXXXXXXX' : 'Your number'}
           className={`${inputClass} tabular`}
         />
       </Field>

@@ -51,6 +51,34 @@ service cloud.firestore {
       }
     }
 
+    // Username → login-email lookup, so a shop can sign in with its username even
+    // though Firebase Auth only understands email addresses. The read has to happen
+    // before anyone is signed in, so these documents are world-readable; that is the
+    // cost of usernames, and they carry nothing but the email and the owner's uid.
+    match /usernames/{username} {
+      allow read: if true;
+
+      // A name can be claimed once, by the account it points at — the email and uid
+      // written must be the caller's own. Because this only fires when the document
+      // does not yet exist, a second shop trying to take the same name is refused,
+      // which is what keeps usernames unique.
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['uid', 'email'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Only the owner may move their own lookup to a new email (after changing it),
+      // and never hand the name to a different account.
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.email == request.auth.token.email;
+
+      // A name is never freed — deleting it would let it be re-registered against a
+      // different, now-stranded shop.
+      allow delete: if false;
+    }
+
     // Anything not named above is denied — including the old top-level products,
     // transactions and counters collections used before shops had their own space.
     // Those are left in the database as a backup of the first shop's data and are

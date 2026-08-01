@@ -73,12 +73,22 @@ export function cleanDetails(details) {
   if (!clean.name) throw new Error('Enter the shop name.')
   if (!clean.owner) throw new Error("Enter the owner's name.")
 
-  // Written without its spaces, and uppercased, so the same number typed three
-  // different ways prints the same way on every bill.
-  clean.gstin = clean.gstin.replace(/\s+/g, '').toUpperCase()
-  if (!clean.gstin) throw new Error('Enter the shop’s GST number.')
-  if (!/^[0-9A-Z]{15}$/.test(clean.gstin)) {
-    throw new Error('A GST number is exactly 15 letters and numbers, like 01CTBPA2880C1ZJ.')
+  // The registration number is optional. A GST number is checked for its exact shape;
+  // any other kind is taken as typed, but must be given a name so the bill can label it.
+  clean.taxType = details.taxType === 'other' ? 'other' : 'gst'
+  if (clean.taxType === 'gst') {
+    clean.taxLabel = ''
+    // Written without its spaces, and uppercased, so the same number typed three
+    // different ways prints the same way on every bill.
+    clean.gstin = clean.gstin.replace(/\s+/g, '').toUpperCase()
+    if (clean.gstin && !/^[0-9A-Z]{15}$/.test(clean.gstin)) {
+      throw new Error('A GST number is exactly 15 letters and numbers, like 01CTBPA2880C1ZJ.')
+    }
+  } else if (clean.gstin && !clean.taxLabel) {
+    throw new Error('Give a name for the number you entered, like “License No.”.')
+  } else if (!clean.gstin) {
+    // A named label with no number behind it would print an empty line on the bill.
+    clean.taxLabel = ''
   }
 
   // Bill numbers read as UE-0001, so the prefix is uppercased for the owner.

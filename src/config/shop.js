@@ -13,7 +13,18 @@ export const BLANK_SHOP = {
   owner: '',
   /** Short line under the shop name in the sidebar, e.g. "Electronics & Furniture". */
   tagline: '',
+  /**
+   * The shop's registration number. Optional. Named `gstin` because that is what most
+   * shops here have, but it may hold any registration number — see `taxType`.
+   */
   gstin: '',
+  /**
+   * What kind of number `gstin` is: `'gst'` prints it as "GSTIN" and checks its shape,
+   * `'other'` lets the owner name it themselves (see `taxLabel`) and checks nothing.
+   */
+  taxType: 'gst',
+  /** The owner's own label for the number when `taxType` is `'other'`, e.g. "License No.". */
+  taxLabel: '',
   phone: '',
   /** The long line under the shop name on the printed bill book. */
   dealsIn: '',
@@ -48,6 +59,16 @@ export const APP = {
   name: 'InventoryHub',
   developer: 'Mohammad Asrar',
   contactEmail: 'haqasrar264@gmail.com',
+}
+
+/**
+ * What to print before a shop's registration number on bills and banners — "GSTIN"
+ * for a GST number, or whatever the owner named it. Empty when there is no number,
+ * so callers can guard on it too.
+ */
+export function taxIdLabel(shop) {
+  if (!shop?.gstin) return ''
+  return shop.taxType === 'other' && shop.taxLabel ? shop.taxLabel : 'GSTIN'
 }
 
 /** Used when an owner leaves the bill prefix blank. */

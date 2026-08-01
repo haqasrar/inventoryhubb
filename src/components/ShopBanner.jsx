@@ -1,5 +1,6 @@
 import { MapPin, BadgeCheck, Phone } from 'lucide-react'
 import { useShop } from '../context/useShop'
+import { taxIdLabel } from '../config/shop'
 
 /**
  * Dashboard header card. The logo is black line art, so it sits on a light panel
@@ -30,7 +31,7 @@ export default function ShopBanner() {
             {shop.gstin && (
               <p className="flex items-center gap-2">
                 <BadgeCheck size={15} className="shrink-0 text-indigo-500" />
-                <span className="tabular font-medium">GSTIN {shop.gstin}</span>
+                <span className="tabular font-medium">{taxIdLabel(shop)} {shop.gstin}</span>
               </p>
             )}
             {shop.phone && (

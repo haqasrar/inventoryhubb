@@ -13,6 +13,7 @@ import AppCredit from '../components/AppCredit'
 export default function Signup() {
   const { signUp } = useAuth()
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -26,9 +27,10 @@ export default function Signup() {
 
     setBusy(true)
     try {
-      // On success Firebase signs the new account straight in, and the app moves on
-      // to the shop setup screen on its own.
-      await signUp(username, password)
+      // The email is the account's real identity — it is what a forgotten password is
+      // reset through. On success Firebase signs the new account straight in, and the
+      // app moves on to the shop setup screen on its own.
+      await signUp(username, email, password)
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -71,6 +73,24 @@ export default function Signup() {
           </Field>
 
           <Field
+            label="Email"
+            hint="Where a password reset link is sent if you're ever locked out. One email, one shop."
+          >
+            <input
+              type="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value.toLowerCase())}
+              placeholder="you@example.com"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
             label="Password"
             hint="At least 6 characters. Write it down somewhere safe — it cannot be recovered."
           >
@@ -95,12 +115,9 @@ export default function Signup() {
             />
           </Field>
 
-          {/* Said plainly and once, on the only screen where it can still be acted
-              on. There is no email address on the account, so there is nowhere to
-              send a reset link. */}
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-            Keep your username and password safe. There is no way to recover a
-            forgotten password by yourself — only whoever runs this app can set a new one for you.
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+            Forget your password and you can reset it yourself — we email a link to the
+            address above. Keep your username handy for signing in day to day.
           </p>
 
           {error && (
@@ -111,7 +128,7 @@ export default function Signup() {
 
           <button
             type="submit"
-            disabled={busy || !username.trim() || !password || !confirm}
+            disabled={busy || !username.trim() || !email.trim() || !password || !confirm}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <UserPlus size={17} />

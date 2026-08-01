@@ -1,4 +1,5 @@
 import { useShop } from '../context/useShop'
+import { taxIdLabel } from '../config/shop'
 import InstallButton from './InstallButton'
 import AppCredit from './AppCredit'
 
@@ -30,7 +31,7 @@ export default function ShopFooter() {
           {shop.owner && <p>Prop: {shop.owner}</p>}
           {(shop.gstin || shop.phone) && (
             <p className="tabular">
-              {[shop.gstin && `GSTIN: ${shop.gstin}`, shop.phone && `Cell: ${shop.phone}`]
+              {[shop.gstin && `${taxIdLabel(shop)}: ${shop.gstin}`, shop.phone && `Cell: ${shop.phone}`]
                 .filter(Boolean)
                 .join(' · ')}
             </p>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Printer, X } from 'lucide-react'
 import { useShop } from '../context/useShop'
+import { taxIdLabel } from '../config/shop'
 import { formatINR, formatDateTime } from '../utils/format'
 import { paymentLabel, paymentOf } from '../utils/payment'
 
@@ -76,7 +77,7 @@ export default function Bill({ bill, onClose }) {
               )}
 
               <div className="tabular mt-1.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-medium text-slate-700">
-                {shop.gstin && <span>GSTIN: {shop.gstin}</span>}
+                {shop.gstin && <span>{taxIdLabel(shop)}: {shop.gstin}</span>}
                 {shop.phone && <span>Cell: {shop.phone}</span>}
               </div>
             </div>

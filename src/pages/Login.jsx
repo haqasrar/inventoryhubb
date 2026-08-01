@@ -72,6 +72,15 @@ export default function Login() {
             </p>
           )}
 
+          <div className="text-right">
+            <Link
+              to="/forgot"
+              className="text-xs font-medium text-slate-400 hover:text-slate-600"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={busy || !username.trim() || !password}
